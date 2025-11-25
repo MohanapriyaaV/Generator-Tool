@@ -6,11 +6,25 @@ export const QuotationProvider = ({ children }) => {
   const [quotationFor, setQuotationFor] = useState({
     personName: "",
     companyName: "",
-    address: "",
+    street: "",
+    apartment: "",
+    zipCode: "",
+    countryCode: "",
+    stateCode: "",
+    city: "",
   });
 
   const [quotationFrom, setQuotationFrom] = useState({
     companyName: "",
+    street: "",
+    apartment: "",
+    zipCode: "",
+    countryCode: "",
+    stateCode: "",
+    city: "",
+    pan: "",
+    gstin: "",
+    // Keep address for backward compatibility
     address: "",
   });
 
@@ -24,9 +38,11 @@ export const QuotationProvider = ({ children }) => {
   const [quotationDetails, setQuotationDetails] = useState({
     quotationNo: "",
     issueDate: "",
+    projectName: "",
     deliveryDays: "",
     validityDays: "",
     paymentDays: "",
+    referenceNo: "",
   });
 
   const [quotationItems, setQuotationItems] = useState([

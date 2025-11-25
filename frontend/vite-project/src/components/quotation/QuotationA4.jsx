@@ -1,7 +1,10 @@
-import React, { useContext, useRef, useState } from "react";
+import React, { useContext, useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Country, State } from "country-state-city";
 import { QuotationContext } from "../../context/QuotationContext";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { createQuotation } from "../../services/api.js";
 
 const QuotationA4 = () => {
   const {
@@ -13,8 +16,10 @@ const QuotationA4 = () => {
     globalTaxes,
   } = useContext(QuotationContext);
 
+  const navigate = useNavigate();
   const printRef = useRef(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Extract and calculate totals
   const cgst = Number(globalTaxes?.cgst || 0);
@@ -29,6 +34,104 @@ const QuotationA4 = () => {
   const sgstAmount = (totalBaseAmount * sgst) / 100;
   const igstAmount = (totalBaseAmount * igst) / 100;
   const grandTotal = totalBaseAmount + cgstAmount + sgstAmount + igstAmount;
+
+  // Save quotation to database when component mounts and data is available
+  useEffect(() => {
+    const saveQuotation = async () => {
+      if (isSaved) {
+        console.log('Quotation already saved, skipping...');
+        return; // Don't save multiple times
+      }
+      
+      // Wait a bit for context to be fully loaded
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Debug: Log what data we have
+      console.log('Attempting to save quotation with data:', {
+        quotationNo: quotationDetails?.quotationNo,
+        quotationDate: quotationDetails?.issueDate,
+        fromCompanyName: quotationFrom?.companyName,
+        toCompanyName: quotationFor?.companyName,
+        totalAmount: grandTotal,
+        fullContext: { quotationDetails, quotationFrom, quotationFor },
+      });
+
+      // Generate quotation number if not available
+      let quotationNo = quotationDetails?.quotationNo;
+      if (!quotationNo) {
+        const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        const randomPart = Math.floor(100 + Math.random() * 900);
+        quotationNo = `QT-${datePart}-${randomPart}`;
+        console.log('Generated quotation number:', quotationNo);
+      }
+
+      // Check if we have minimum required data
+      if (!quotationFrom?.companyName) {
+        console.warn('⚠️ Cannot save: quotationFrom.companyName is missing');
+        console.warn('Available quotationFrom data:', quotationFrom);
+        return;
+      }
+      
+      try {
+        const dbData = {
+          quotationNo: quotationNo,
+          quotationDate: quotationDetails?.issueDate || new Date().toISOString(),
+          totalAmount: grandTotal || 0,
+          referenceNo: quotationDetails?.referenceNo || '',
+          projectName: quotationDetails?.projectName || '',
+          fromAddress: {
+            companyName: quotationFrom.companyName || '',
+            street: quotationFrom.street || '',
+            apartment: quotationFrom.apartment || '',
+            zipCode: quotationFrom.zipCode || '',
+            countryCode: quotationFrom.countryCode || '',
+            stateCode: quotationFrom.stateCode || '',
+            city: quotationFrom.city || '',
+            pan: quotationFrom.pan || '',
+            gstin: quotationFrom.gstin || '',
+            // Keep address for backward compatibility
+            address: quotationFrom.address || (quotationFrom.street ? `${quotationFrom.street}${quotationFrom.apartment ? ', ' + quotationFrom.apartment : ''}, ${quotationFrom.city}, ${quotationFrom.zipCode}` : ''),
+          },
+          toAddress: {
+            personName: quotationFor?.personName || '',
+            companyName: quotationFor?.companyName || '',
+            street: quotationFor?.street || '',
+            apartment: quotationFor?.apartment || '',
+            zipCode: quotationFor?.zipCode || '',
+            countryCode: quotationFor?.countryCode || '',
+            stateCode: quotationFor?.stateCode || '',
+            city: quotationFor?.city || '',
+            // Keep address for backward compatibility
+            address: quotationFor?.address || (quotationFor?.street ? `${quotationFor.street}${quotationFor.apartment ? ', ' + quotationFor.apartment : ''}, ${quotationFor.city}, ${quotationFor.zipCode}` : ''),
+          },
+          fullQuotationData: {
+            quotationFor,
+            quotationFrom,
+            bankDetails,
+            quotationDetails,
+            quotationItems,
+            globalTaxes,
+          },
+        };
+
+        console.log('Sending quotation data to API:', dbData);
+        const result = await createQuotation(dbData);
+        console.log('✅ Quotation saved to database:', result);
+        setIsSaved(true);
+      } catch (error) {
+        console.error('❌ Error saving quotation to database:', error);
+        console.error('Error details:', error.message);
+        if (error.stack) {
+          console.error('Stack trace:', error.stack);
+        }
+        // Don't block the user - just log the error
+      }
+    };
+
+    // Save quotation when component mounts
+    saveQuotation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount
 
   const today = new Date();
   const dateString = today.toLocaleDateString("en-GB", {
@@ -195,7 +298,37 @@ const QuotationA4 = () => {
       position -= pdfHeight;
     }
 
-    pdf.save(`quotation_${new Date().toISOString().slice(0, 10)}.pdf`);
+    // Generate PDF as blob for S3 upload
+    const pdfBlob = pdf.output('blob');
+    const fileName = `quotation_${quotationDetails?.quotationNo || new Date().toISOString().slice(0, 10)}.pdf`;
+    
+    // Upload to S3
+    try {
+      const { uploadPdfToS3, updateQuotationS3Url } = await import('../../services/api.js');
+      const uploadResult = await uploadPdfToS3(pdfBlob, fileName, 'Quotation');
+      console.log('✅ Quotation PDF uploaded to S3:', uploadResult.url);
+
+      // Update database with S3 URL
+      if (quotationDetails?.quotationNo) {
+        try {
+          await updateQuotationS3Url(quotationDetails.quotationNo, uploadResult.url);
+          console.log('✅ Database updated with S3 URL');
+        } catch (dbError) {
+          console.warn('⚠️ Could not update database with S3 URL:', dbError.message);
+        }
+      }
+    } catch (uploadError) {
+      console.error('❌ Error uploading PDF to S3:', uploadError);
+      console.warn('PDF downloaded but not saved to S3. Error:', uploadError.message);
+    }
+
+    // Download the PDF to user's computer
+    pdf.save(fileName);
+    
+    // Navigate back to form page after download
+    setTimeout(() => {
+      navigate('/quotation-form');
+    }, 500);
   } catch (err) {
     console.error("PDF generation failed:", err);
     alert("Failed to generate PDF. Check console for details.");
@@ -205,6 +338,26 @@ const QuotationA4 = () => {
     document.head.removeChild(safeColorStyle);
   }
 };
+
+  // Check if required data is available
+  if (!quotationFrom || !quotationFrom.companyName) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md text-center">
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Missing Data</h2>
+          <p className="text-gray-600 mb-6">
+            Please fill in the quotation details before generating the document.
+          </p>
+          <button
+            onClick={() => navigate('/quotation-form')}
+            className="bg-sky-600 hover:bg-sky-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+          >
+            Go to Quotation Form
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -241,15 +394,55 @@ const QuotationA4 = () => {
               Quotation From
             </h3>
             <p>{quotationFrom.companyName || "-"}</p>
-            <p className="whitespace-pre-line">{quotationFrom.address || "-"}</p>
+            {quotationFrom.street && <p>{quotationFrom.street}</p>}
+            {quotationFrom.apartment && <p>{quotationFrom.apartment}</p>}
+            <p>
+              {[
+                quotationFrom.city,
+                quotationFrom.stateCode && quotationFrom.countryCode 
+                  ? State.getStateByCodeAndCountry(quotationFrom.stateCode, quotationFrom.countryCode)?.name || quotationFrom.stateCode
+                  : quotationFrom.stateCode,
+                quotationFrom.zipCode
+              ].filter(Boolean).join(", ")}
+            </p>
+            {quotationFrom.countryCode && (
+              <p>{Country.getCountryByCode(quotationFrom.countryCode)?.name || quotationFrom.countryCode}</p>
+            )}
+            {quotationFrom.pan && <p>PAN: {quotationFrom.pan}</p>}
+            {quotationFrom.gstin && <p>GSTIN: {quotationFrom.gstin}</p>}
+            {/* Fallback to old address format if granular fields are not available */}
+            {!quotationFrom.street && quotationFrom.address && (
+              <p className="whitespace-pre-line">{quotationFrom.address}</p>
+            )}
           </div>
 
           <div>
             <h3 className="font-bold underline mb-1 text-sky-900">
               Quotation For
             </h3>
+            {quotationFor.personName && <p>{quotationFor.personName}</p>}
             <p>{quotationFor.companyName || "-"}</p>
-            <p className="whitespace-pre-line">{quotationFor.address || "-"}</p>
+            {quotationFor.street && <p>{quotationFor.street}</p>}
+            {quotationFor.apartment && <p>{quotationFor.apartment}</p>}
+            <p>
+              {[
+                quotationFor.city,
+                quotationFor.stateCode && quotationFor.countryCode 
+                  ? State.getStateByCodeAndCountry(quotationFor.stateCode, quotationFor.countryCode)?.name || quotationFor.stateCode
+                  : quotationFor.stateCode,
+                quotationFor.zipCode
+              ].filter(Boolean).join(", ")}
+            </p>
+            {quotationFor.countryCode && (
+              <p>{Country.getCountryByCode(quotationFor.countryCode)?.name || quotationFor.countryCode}</p>
+            )}
+            {quotationFor.pan && <p>PAN: {quotationFor.pan}</p>}
+            {quotationFor.gstin && <p>GSTIN: {quotationFor.gstin}</p>}
+            {quotationFor.phoneNumber && <p>Phone: {quotationFor.phoneNumber}</p>}
+            {/* Fallback to old address format if granular fields are not available */}
+            {!quotationFor.street && quotationFor.address && (
+              <p className="whitespace-pre-line">{quotationFor.address}</p>
+            )}
           </div>
 
           <div className="flex justify-end">
@@ -468,6 +661,17 @@ const QuotationA4 = () => {
             <path d="M9 7a1 1 0 012 0v5.586l1.293-1.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 12.586V7z" />
           </svg>
           <span>{isDownloading ? "Preparing..." : "Download as PDF"}</span>
+        </button>
+        
+        {/* Back to Home Button */}
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center justify-center space-x-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded shadow-md transition mt-4"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+          </svg>
+          <span>Back to Home</span>
         </button>
       </div>
     </>

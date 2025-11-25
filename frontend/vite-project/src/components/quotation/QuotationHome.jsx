@@ -5,7 +5,7 @@ import { QuotationContext } from "../../context/QuotationContext";
 
 const QuotationHome = () => {
   const navigate = useNavigate();
-  const { quotationFor, quotationFrom, bankDetails, quotationDetails } = useContext(QuotationContext);
+  const { quotationFor, quotationFrom, bankDetails, quotationDetails, setQuotationDetails } = useContext(QuotationContext);
 
 
   const [quotationNumber, setQuotationNumber] = useState("");
@@ -16,10 +16,30 @@ const QuotationHome = () => {
   const [showDeliveryDetailsModal, setShowDeliveryDetailsModal] = useState(false);
 
   useEffect(() => {
-    const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-    const randomPart = Math.floor(100 + Math.random() * 900);
-    setQuotationNumber(`QT-${datePart}-${randomPart}`);
-  }, []);
+    // Use quotation number from context if available, otherwise generate new one
+    if (quotationDetails?.quotationNo) {
+      setQuotationNumber(quotationDetails.quotationNo);
+    } else {
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randomPart = Math.floor(100 + Math.random() * 900);
+      const newQuotationNo = `QT-${datePart}-${randomPart}`;
+      setQuotationNumber(newQuotationNo);
+      // Save to context
+      setQuotationDetails(prev => ({ ...prev, quotationNo: newQuotationNo }));
+    }
+    
+    // Use issue date from context if available
+    if (quotationDetails?.issueDate) {
+      setIssueDate(quotationDetails.issueDate);
+    }
+  }, [quotationDetails, setQuotationDetails]);
+
+  // Update context when issue date changes
+  const handleIssueDateChange = (e) => {
+    const newDate = e.target.value;
+    setIssueDate(newDate);
+    setQuotationDetails(prev => ({ ...prev, issueDate: newDate }));
+  };
 
   const RowWithEye = ({ label, onClick, onEyeClick }) => (
     <div className="flex items-center space-x-3">
@@ -77,7 +97,7 @@ const QuotationHome = () => {
           <input
             type="date"
             value={issueDate}
-            onChange={(e) => setIssueDate(e.target.value)}
+            onChange={handleIssueDateChange}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
           />
         </div>
@@ -196,6 +216,7 @@ const QuotationHome = () => {
               <X size={20} />
             </button>
             <h2 className="text-xl font-semibold mb-4">Delivery & Payment Details</h2>
+            <p><strong>Project Name:</strong> {quotationDetails.projectName || "-"}</p>
             <p><strong>Delivery Period:</strong> {quotationDetails.deliveryDays || "-"} days</p>
             <p><strong>Quotation Validity:</strong> {quotationDetails.validityDays || "-"} days</p>
             <p><strong>Payment Terms:</strong> {quotationDetails.paymentDays || "-"} days</p>

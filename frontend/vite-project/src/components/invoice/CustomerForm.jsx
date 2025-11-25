@@ -11,7 +11,7 @@ const CustomerForm = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setCustomerDetails({ name, address });
-    navigate('/'); // Go back to Home after saving customer details
+    navigate('/invoice'); // Go back to Home after saving customer details
   };
 
   return (
@@ -37,7 +37,7 @@ const CustomerForm = () => {
             className="w-full px-3 py-2 border border-violet-200 rounded-lg focus:ring-2 focus:ring-violet-400 focus:outline-none shadow-sm"
           />
         </div>
-        <button type="submit" className="w-full bg-violet-600 hover:bg-violet-700 transition text-white py-2 rounded-lg font-medium shadow">Save & Continue</button>
+        <button onlick={handleSubmit} type="submit" className="w-full bg-violet-600 hover:bg-violet-700 transition text-white py-2 rounded-lg font-medium shadow">Save & Continue</button>
       </form>
     </div>
   );

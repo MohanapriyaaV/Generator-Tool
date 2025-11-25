@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InvoiceContext } from '../../context/InvoiceContext';
 
@@ -6,22 +6,28 @@ const Home = () => {
   const [logo, setLogo] = useState(null);
   const [issueDate, setIssueDate] = useState("");
   const navigate = useNavigate();
-  const { setCustomerDetails } = useContext(InvoiceContext);
+  const { setCustomerDetails, setInvoiceNumber, setIssueDate: setIssueDateContext, setLogo: setLogoContext } = useContext(InvoiceContext);
 
-  // Generate invoice number in format 001, 002, ... based on current date/time
-  const getInvoiceNumber = () => {
-    // You can use a more robust logic if you have a backend or persistent storage
-    const now = new Date();
-    const num = now.getFullYear().toString().slice(-2) +
-      (now.getMonth() + 1).toString().padStart(2, '0') +
-      now.getDate().toString().padStart(2, '0') +
-      now.getHours().toString().padStart(2, '0') +
-      now.getMinutes().toString().padStart(2, '0') +
-      now.getSeconds().toString().padStart(2, '0');
-    // Only last 3 digits for display as per your request
-    return num.slice(-3).padStart(3, '0');
-  };
-  const invoiceNumber = getInvoiceNumber();
+  // Invoice number will be auto-generated in InvoiceFormSinglePage
+  // Using a temporary placeholder here
+  const invoiceNumber = 'INV0000';
+
+  // Set invoice number and issue date in context when component mounts or values change
+  useEffect(() => {
+    setInvoiceNumber(invoiceNumber);
+  }, [invoiceNumber, setInvoiceNumber]);
+
+  useEffect(() => {
+    if (issueDate) {
+      setIssueDateContext(issueDate);
+    }
+  }, [issueDate, setIssueDateContext]);
+
+  useEffect(() => {
+    if (logo) {
+      setLogoContext(logo);
+    }
+  }, [logo, setLogoContext]);
 
   const handleLogoChange = (e) => {
     if (e.target.files && e.target.files[0]) {

@@ -1,0 +1,518 @@
+/* PurchaseOrderForm.css */
+
+/* Main container and layout */
+.po-form-container {
+  min-height: 100vh;
+  background: linear-gradient(to bottom, #f9fafb, #ffffff);
+  padding: 2rem 1rem;
+}
+
+.po-form-max-width {
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+/* Header section */
+.po-header {
+  background: linear-gradient(to right, #0d9488, #6b21a8);
+  color: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  margin-bottom: 2rem;
+}
+
+.po-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.po-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.po-back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  hover: background-color rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.1);
+  border: none;
+  cursor: pointer;
+}
+
+.po-back-button:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.po-back-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.po-header-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Grid layouts */
+.po-grid-2-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .po-grid-2-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.po-grid-2-cols-flex {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .po-grid-2-cols-flex {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.po-grid-4-cols {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .po-grid-4-cols {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Cards and sections */
+.po-card {
+  background: white;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  margin-bottom: 2rem;
+}
+
+.po-section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.po-section-subtitle {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+
+/* Address section */
+.po-address-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.po-address-section-titles {
+  flex: 1;
+}
+
+.po-location-select {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+/* Form labels and inputs */
+.po-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+}
+
+.po-label-required {
+  color: #ef4444;
+}
+
+.po-input,
+.po-textarea,
+.po-select {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.po-input:focus,
+.po-textarea:focus,
+.po-select:focus {
+  outline: none;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 1px #0d9488;
+}
+
+.po-textarea {
+  min-height: 38px;
+  resize: none;
+  overflow: hidden;
+}
+
+.po-select:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.po-character-counter {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.po-character-counter-valid {
+  color: #10b981;
+}
+
+.po-character-counter-invalid {
+  color: #666;
+}
+
+.po-error-input {
+  border-color: #ef4444;
+}
+
+.po-error-message {
+  font-size: 0.75rem;
+  color: #ef4444;
+  margin-top: 0.25rem;
+}
+
+/* Items table */
+.po-items-container {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.po-items-header {
+  padding: 1.5rem;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.po-items-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.po-add-item-button {
+  color: #2563eb;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.po-add-item-button:hover {
+  color: #1d4ed8;
+}
+
+.po-items-table-overflow {
+  overflow-x: auto;
+}
+
+.po-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.po-table-header-cell {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #4b5563;
+  text-transform: uppercase;
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.po-table-body-row {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.po-table-body-cell {
+  padding: 0.5rem 1rem;
+}
+
+.po-table-body-cell-right {
+  text-align: right;
+  font-weight: 600;
+}
+
+.po-item-name-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+}
+
+.po-item-description {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.po-item-quantity-input,
+.po-item-price-input,
+.po-item-hsn-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  padding: 0.5rem;
+}
+
+.po-delete-item-button {
+  color: #dc2626;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+.po-delete-item-button:hover {
+  color: #b91c1c;
+}
+
+.po-delete-item-button:disabled {
+  color: #d1d5db;
+  cursor: not-allowed;
+}
+
+/* Tax section */
+.po-tax-inputs {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.po-tax-input {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+.po-tax-button-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.po-calculate-tax-button {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.po-calculate-tax-button:hover {
+  background-color: #1d4ed8;
+}
+
+.po-clear-tax-button {
+  background-color: #e5e7eb;
+  color: #1f2937;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.po-clear-tax-button:hover {
+  background-color: #d1d5db;
+}
+
+/* Financial summary */
+.po-financial-summary {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.po-summary-box {
+  width: 100%;
+  max-width: 20rem;
+  space-y: 0.5rem;
+}
+
+.po-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #4b5563;
+}
+
+.po-summary-row-total {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.po-summary-label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.po-summary-value {
+  font-weight: 600;
+}
+
+.po-summary-divider {
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Terms and conditions */
+.po-terms-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.po-terms-edit-button {
+  color: #2563eb;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.po-terms-edit-button:hover {
+  color: #1d4ed8;
+}
+
+.po-terms-textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+}
+
+/* Buttons */
+.po-add-button {
+  background-color: #16a34a;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 1rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.po-add-button:hover {
+  background-color: #15803d;
+}
+
+.po-submit-button {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: linear-gradient(to right, #0d9488, #6b21a8);
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.po-submit-button:hover {
+  background: linear-gradient(to right, #0f766e, #581c87);
+  transform: scale(1.05);
+}
+
+.po-submit-button:focus {
+  outline: 2px solid #0d9488;
+  outline-offset: 2px;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .po-form-container {
+    padding: 1rem;
+  }
+
+  .po-items-table {
+    font-size: 0.75rem;
+  }
+
+  .po-table-header-cell,
+  .po-table-body-cell {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .po-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .po-header-title {
+    font-size: 1.25rem;
+  }
+
+  .po-items-table {
+    font-size: 0.65rem;
+  }
+
+  .po-table-header-cell,
+  .po-table-body-cell {
+    padding: 0.25rem;
+  }
+}

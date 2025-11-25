@@ -1,0 +1,602 @@
+.dashboard-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  animation: fadeIn 0.8s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header Section */
+.dashboard-header {
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 2rem;
+  animation: slideDown 0.8s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logo-container {
+  animation: scaleIn 1s ease-out 0.2s both;
+  flex-shrink: 0;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: white;
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.3s ease;
+}
+
+.logo:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.company-info {
+  text-align: left;
+  color: white;
+}
+
+.company-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  animation: fadeInUp 1s ease-out 0.4s both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-heading {
+  font-size: 2.5rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+  text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(45deg, #fff, #f0f0f0);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fadeInUp 1s ease-out 0.6s both;
+  text-align: center;
+}
+
+/* Main Content */
+.dashboard-main {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  flex: 1;
+  padding-top: 1rem;
+}
+
+.main-content-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  margin-top: 4rem;
+}
+
+.buttons-container {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  flex-wrap: nowrap;
+}
+
+.nav-button {
+  background: white;
+  border: none;
+  border-radius: 20px;
+  padding: 3rem 2rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.8s ease-out both;
+  flex: 1;
+  min-width: 0;
+}
+
+.nav-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.nav-button:hover::before {
+  left: 100%;
+}
+
+.nav-button:nth-child(1) {
+  animation-delay: 0.2s;
+}
+
+.nav-button:nth-child(2) {
+  animation-delay: 0.4s;
+}
+
+.nav-button:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+.nav-button:nth-child(4) {
+  animation-delay: 0.8s;
+}
+
+.nav-button:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.nav-button:active {
+  transform: translateY(-5px) scale(1.02);
+}
+
+.invoice-button:hover {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  color: white;
+}
+
+.quotation-button:hover {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.proforma-button:hover {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.purchase-order-button:hover {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+  color: white;
+}
+
+.button-icon {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.invoice-button .button-icon {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.quotation-button .button-icon {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.proforma-button .button-icon {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.purchase-order-button .button-icon {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+}
+
+.nav-button:hover .button-icon {
+  transform: rotate(360deg) scale(1.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.button-icon svg {
+  width: 40px;
+  height: 40px;
+}
+
+.button-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.nav-button:hover .button-text {
+  color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
+  }
+
+  .logo {
+    width: 100px;
+    height: 100px;
+  }
+
+  .company-name {
+    font-size: 1.2rem;
+  }
+
+  .app-heading {
+    font-size: 2rem;
+  }
+
+  .buttons-container {
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .logo-container {
+    margin-bottom: 1rem;
+  }
+
+  .nav-button {
+    padding: 2.5rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .company-name {
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+
+  .app-heading {
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+  }
+
+  .button-text {
+    font-size: 1.2rem;
+  }
+}
+
+/* History Section */
+.history-section {
+  width: 100%;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0 1rem;
+}
+
+.history-toggle-button {
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 15px;
+  padding: 1rem 2.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #333;
+  backdrop-filter: blur(10px);
+}
+
+.history-toggle-button:hover {
+  background: white;
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.history-toggle-button:active {
+  transform: translateY(-1px);
+}
+
+.history-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #667eea;
+  transition: transform 0.3s ease;
+}
+
+.history-toggle-button:hover .history-icon {
+  transform: rotate(180deg);
+}
+
+.history-arrow {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+  color: #667eea;
+}
+
+.history-arrow.rotated {
+  transform: rotate(180deg);
+}
+
+.history-toggle-text {
+  letter-spacing: 0.5px;
+}
+
+/* History Buttons Container */
+.history-buttons-container {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  animation: slideDownFade 0.4s ease-out;
+  overflow: visible;
+  padding: 0.5rem 0;
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.history-button {
+  background: white;
+  border: none;
+  border-radius: 15px;
+  padding: 1.5rem 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  min-width: 200px;
+  width: auto;
+  flex: 1 1 0;
+  max-width: none;
+  height: auto;
+}
+
+.history-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.5s;
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+.history-button:hover::before {
+  left: 100%;
+}
+
+.history-button:hover {
+  transform: translateY(-5px) scale(1.03);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+.history-button:active {
+  transform: translateY(-2px) scale(1.01);
+}
+
+.history-button-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.history-button-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.history-invoice-button:hover {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  color: white;
+}
+
+.history-invoice-button:hover .history-button-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.history-quotation-button:hover {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.history-quotation-button:hover .history-button-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.history-proforma-button:hover {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.history-proforma-button:hover .history-button-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.history-purchase-order-button:hover {
+  background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+  color: white;
+}
+
+.history-purchase-order-button:hover .history-button-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.history-reference-button:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.history-reference-button:hover .history-button-icon {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg) scale(1.1);
+}
+
+.history-button-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  color: #333;
+  transition: color 0.3s ease;
+  text-align: left;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  flex: 1;
+  display: block;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+.history-button:hover .history-button-text {
+  color: white;
+}
+
+/* Responsive Design for History Section */
+@media (max-width: 768px) {
+  .history-section {
+    margin-top: 2rem;
+  }
+
+  .history-toggle-button {
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+  }
+
+  .history-buttons-container {
+    gap: 0.5rem;
+    overflow: visible;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .history-button {
+    min-width: 180px;
+    max-width: none;
+    padding: 1.2rem 1rem;
+    flex: 1 1 auto;
+  }
+
+  .history-button-text {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .history-toggle-button {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .history-button {
+    padding: 1.2rem 1.5rem;
+  }
+
+  .history-button-text {
+    font-size: 0.9rem;
+  }
+}
+

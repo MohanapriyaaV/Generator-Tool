@@ -75,7 +75,10 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
         <div style={{ textAlign: 'right', minWidth: 240, maxWidth: 260, flex: '0 0 260px', wordBreak: 'break-word', marginTop: 16, paddingLeft: 12, alignSelf: 'flex-start' }}>
           <div style={{ fontWeight: 700, fontSize: 22, marginBottom: 18, whiteSpace: 'nowrap' }}>INVOICE</div>
           <div style={{ fontSize: 15, marginBottom: 8, whiteSpace: 'nowrap' }}>Issue Date: <b>{issueDate}</b></div>
-          <div style={{ fontSize: 15, whiteSpace: 'nowrap' }}>Invoice number: <b>{invoiceNumber}</b></div>
+          <div style={{ fontSize: 15, marginBottom: 8, whiteSpace: 'nowrap' }}>Invoice number: <b>{invoiceNumber}</b></div>
+          {props.projectName && (
+            <div style={{ fontSize: 15, whiteSpace: 'nowrap' }}>Project Name: <b>{props.projectName}</b></div>
+          )}
         </div>
       </div>
 
@@ -95,12 +98,13 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
           <thead>
             <tr style={{ background: '#f0f0f0' }}>
               <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '5%', fontWeight: 'bold', letterSpacing: '0.05em' }}>SNo</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '30%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Item Name</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '10%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Quantity</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '15%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Price/Qty</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '10%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Tax%</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '15%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Tax amount</th>
-              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '15%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Total</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '25%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Item Name</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '10%', fontWeight: 'bold', letterSpacing: '0.05em' }}>HSN/SAC</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '8%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Quantity</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '12%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Price/Qty</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '8%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Tax%</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '12%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Tax amount</th>
+              <th style={{ border: '1px solid #bbb', padding: '10px 8px', width: '12%', fontWeight: 'bold', letterSpacing: '0.05em' }}>Total</th>
             </tr>
           </thead>
           <tbody>
@@ -109,6 +113,7 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
                 <tr key={idx}>
                   <td style={{ border: '1px solid #bbb', padding: '10px 8px', textAlign: 'center', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em' }}>{idx + 1}</td>
                   <td style={{ border: '1px solid #bbb', padding: '10px 8px', wordBreak: 'break-word', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em' }}>{item.name || item.description}</td>
+                  <td style={{ border: '1px solid #bbb', padding: '10px 8px', textAlign: 'center', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em' }}>{item.hsn || '-'}</td>
                   <td style={{ border: '1px solid #bbb', padding: '10px 8px', textAlign: 'center', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em' }}>{item.quantity || item.qty}</td>
                   <td style={{ border: '1px solid #bbb', padding: '10px 8px', textAlign: 'right', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em' }}>{Number(item.price).toFixed(2)}</td>
                   <td style={{ border: '1px solid #bbb', padding: '10px 8px', textAlign: 'center', fontSize: 11, letterSpacing: '0.05em', wordSpacing: '0.08em', fontWeight: 600 }}>{getIGST(item)}</td>
@@ -118,7 +123,7 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
               ))
             ) : (
               <tr>
-                <td colSpan={7} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'center', color: '#aaa' }}>No items added</td>
+                <td colSpan={8} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'center', color: '#aaa' }}>No items added</td>
               </tr>
             )}
           </tbody>

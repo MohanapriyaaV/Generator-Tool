@@ -1,0 +1,413 @@
+.invoice-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 30px 40px 30px 40px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  box-sizing: border-box; /* Include padding in width calculation */
+}
+
+.invoice-form h2 {
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  font-size: 24px;
+}
+
+.form-section {
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #4CAF50;
+}
+
+.address-form-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+  margin-bottom: 20px;
+  min-width: 0; /* Prevent grid overflow */
+  overflow: hidden; /* Prevent horizontal overflow */
+}
+
+/* For Invoice From - single column, for Bill To/Ship To - two columns */
+.address-form-container.two-columns {
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+  min-width: 0; /* Prevent grid overflow */
+  overflow: hidden; /* Prevent horizontal overflow */
+}
+
+.address-form-container.two-columns > .address-section:first-child {
+  padding-right: 30px;
+  border-right: 2px solid #ddd;
+}
+
+.address-form-container.two-columns > .address-section:last-child {
+  padding-left: 30px;
+}
+
+.address-section {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  min-width: 0; /* Prevent section overflow */
+  overflow: hidden; /* Prevent horizontal overflow */
+}
+
+.address-section-header {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.address-section-header h3 {
+  margin: 0 0 5px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.sub-header {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+}
+
+.select-location {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.select-location select {
+  padding: 5px 10px;
+  font-size: 14px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  min-width: 0; /* Prevent grid overflow */
+}
+
+.form-grid > * {
+  min-width: 0; /* Prevent grid items from overflowing */
+}
+
+.invoice-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: 500;
+  gap: 5px;
+  color: #333;
+  min-width: 0; /* Prevent label overflow */
+  width: 100%; /* Ensure labels take full width of grid cell */
+}
+
+.invoice-form input,
+.invoice-form textarea,
+.invoice-form select {
+  padding: 8px 10px;
+  font-size: 14px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  resize: vertical;
+  margin-top: 2px;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box; /* Include padding and border in width calculation */
+  min-width: 0; /* Allow inputs to shrink below their content size */
+  max-width: 100%; /* Prevent inputs from exceeding their container */
+  word-wrap: break-word; /* Break long words */
+  line-height: 1.4; /* Better line spacing for textareas */
+}
+
+.invoice-form textarea {
+  resize: none; /* Disable manual resize for auto-resize textareas */
+  overflow: hidden; /* Hide overflow for auto-resize */
+  overflow-y: auto; /* Show vertical scrollbar only if needed */
+  min-height: 38px; /* Minimum height to match input height */
+}
+
+.invoice-form input {
+  overflow-x: auto; /* Add scrollbar if content is too long */
+}
+
+.invoice-form input:focus,
+.invoice-form textarea:focus,
+.invoice-form select:focus {
+  border: 1.5px solid #222;
+  outline: none;
+}
+
+.invoice-form input.error,
+.invoice-form textarea.error,
+.invoice-form select.error {
+  border: 1.5px solid #ef4444;
+}
+
+.invoice-form input.error:focus,
+.invoice-form textarea.error:focus,
+.invoice-form select.error:focus {
+  border: 1.5px solid #ef4444;
+  outline: none;
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.invoice-form button {
+  padding: 10px 24px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.next-button,
+.submit-button {
+  background: #4CAF50;
+  color: #fff;
+}
+
+.next-button:hover,
+.submit-button:hover {
+  background: #45a049;
+}
+
+.back-button {
+  background: #666;
+  color: #fff;
+}
+
+.back-button:hover {
+  background: #555;
+}
+
+/* Goods Entry Table */
+.goods-table-container {
+  margin: 20px 0;
+}
+
+.goods-entry-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.goods-entry-table th {
+  background: #f5f5f5;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+  font-weight: 600;
+}
+
+.goods-entry-table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+}
+
+.goods-entry-table input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.goods-entry-table .amount-cell {
+  text-align: right;
+  font-weight: 500;
+}
+
+/* Column-specific width classes for items table */
+.goods-entry-table .col-description {
+  width: 35%;
+  min-width: 200px;
+}
+
+.goods-entry-table .col-hsn {
+  width: 12%;
+  min-width: 100px;
+}
+
+.goods-entry-table .col-quantity {
+  width: 10%;
+  min-width: 80px;
+}
+
+.goods-entry-table .col-rate {
+  width: 12%;
+  min-width: 100px;
+}
+
+.goods-entry-table .col-per {
+  width: 8%;
+  min-width: 60px;
+  text-align: center;
+}
+
+.goods-entry-table .col-amount {
+  width: 13%;
+  min-width: 100px;
+}
+
+.goods-entry-table .col-action {
+  width: 10%;
+  min-width: 100px;
+  text-align: center;
+}
+
+.remove-item-btn {
+  padding: 5px 12px;
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.remove-item-btn:hover {
+  background: #d32f2f;
+}
+
+.add-item-button {
+  padding: 10px 20px;
+  background: #2196F3;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.add-item-button:hover {
+  background: #1976D2;
+}
+
+/* Calculations Summary */
+.calculations-summary {
+  margin-top: 25px;
+  padding: 20px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 15px;
+}
+
+.calc-row.total-row {
+  border-top: 2px solid #333;
+  margin-top: 10px;
+  padding-top: 12px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.calc-value {
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.amount-in-words {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #ddd;
+}
+
+.amount-in-words strong {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.amount-in-words div {
+  font-size: 14px;
+  color: #444;
+  line-height: 1.6;
+}
+
+/* Character Count Display */
+.char-count {
+  display: block;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Error Messages */
+.error-message {
+  display: block;
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Required Field Indicator */
+.required-field {
+  color: #ef4444;
+  font-weight: bold;
+  margin-left: 3px;
+}
+
+/* Invoice Details Grid */
+.invoice-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin-top: 15px;
+}
+
+@media (max-width: 768px) {
+  .invoice-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .address-form-container.two-columns {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}

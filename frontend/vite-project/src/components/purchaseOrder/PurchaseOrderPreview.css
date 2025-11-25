@@ -1,0 +1,393 @@
+/* PurchaseOrderPreview.css */
+
+/* Main container */
+.po-preview-container {
+  min-height: 100vh;
+  background-color: #f3f4f6;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .po-preview-container {
+    padding: 2rem;
+  }
+}
+
+.po-preview-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .po-preview-layout {
+    flex-direction: row;
+  }
+}
+
+.po-preview-main {
+  flex: 1;
+}
+
+.po-preview-sidebar {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .po-preview-sidebar {
+    width: 16rem;
+  }
+}
+
+/* Preview document */
+.po-document-preview {
+  background: white;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.po-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.po-logo {
+  width: 200px;
+}
+
+.po-header-right {
+  text-align: right;
+}
+
+.po-document-title {
+  font-size: 1.75rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0;
+}
+
+.po-header-details {
+  font-size: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.po-header-detail-line {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.po-header-detail-note {
+  font-size: 0.6875rem;
+  margin-top: 0.25rem;
+}
+
+/* Address blocks */
+.po-address-blocks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 768px) {
+  .po-address-blocks {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.po-address-block {
+  border: 1px solid #e5e7eb;
+  padding: 1rem;
+  border-radius: 0.25rem;
+  line-height: 1.4;
+}
+
+.po-address-block-title {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.po-address-block-item {
+  margin-bottom: 0.25rem;
+}
+
+.po-address-block-item strong {
+  font-weight: 700;
+}
+
+/* Details table */
+.po-details-table {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.po-details-table-header {
+  border: 1px solid #000;
+  padding: 0.375rem 0.5rem;
+  background-color: #f7f7f7;
+}
+
+.po-details-table-cell {
+  border: 1px solid #000;
+  padding: 0.375rem 0.5rem;
+  text-align: center;
+}
+
+/* Items table */
+.po-items-preview-table {
+  width: 100%;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.po-items-table-header-cell {
+  border: 1px solid #000;
+  padding: 0.375rem 0.5rem;
+  background-color: #f7f7f7;
+  text-align: left;
+}
+
+.po-items-table-body-cell {
+  border: 1px solid #000;
+  padding: 0.375rem 0.5rem;
+}
+
+.po-items-table-sl {
+  text-align: center;
+}
+
+.po-items-table-item {
+  text-align: left;
+}
+
+.po-items-table-item-name {
+  font-weight: 700;
+}
+
+.po-items-table-item-description {
+  color: #555;
+  font-size: 0.75rem;
+}
+
+.po-items-table-qty {
+  text-align: center;
+}
+
+.po-items-table-price {
+  text-align: right;
+}
+
+.po-items-table-hsn {
+  text-align: center;
+}
+
+.po-items-table-total {
+  text-align: right;
+}
+
+/* Summary section */
+.po-summary-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .po-summary-section {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.po-terms-box {
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.po-terms-content {
+  white-space: pre-wrap;
+  font-size: 0.75rem;
+}
+
+.po-totals-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.po-totals-table-row {
+  border: 1px solid #000;
+}
+
+.po-totals-table-cell {
+  border: 1px solid #000;
+  padding: 0.375rem 0.5rem;
+}
+
+.po-totals-table-cell-right {
+  text-align: right;
+}
+
+.po-totals-table-row-total {
+  background-color: #0f172a;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* Authorization section */
+.po-authorization-section {
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.po-authorization-title {
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.po-authorization-date {
+  margin-bottom: 1.25rem;
+}
+
+.po-authorization-signers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.po-authorization-signer-line {
+  border-top: 1px solid #000;
+  padding-top: 0.5rem;
+}
+
+/* Footer */
+.po-footer {
+  font-size: 0.625rem;
+  text-align: center;
+  color: #555;
+}
+
+/* Buttons */
+.po-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.po-action-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.po-download-button {
+  background-color: #2563eb;
+}
+
+.po-download-button:hover {
+  background-color: #1d4ed8;
+}
+
+.po-download-button:disabled {
+  background-color: #9ca3af;
+}
+
+.po-edit-button {
+  background-color: #16a34a;
+}
+
+.po-edit-button:hover {
+  background-color: #15803d;
+}
+
+.po-create-new-button {
+  background-color: #4b5563;
+}
+
+.po-create-new-button:hover {
+  background-color: #374151;
+}
+
+.po-back-home-button {
+  background-color: #0f172a;
+}
+
+.po-back-home-button:hover {
+  background-color: #1e293b;
+}
+
+/* Loading state */
+.po-loading-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.po-loading-text {
+  font-size: 1rem;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .po-address-blocks {
+    grid-template-columns: 1fr;
+  }
+
+  .po-summary-section {
+    grid-template-columns: 1fr;
+  }
+
+  .po-authorization-signers {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .po-document-preview {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .po-preview-container {
+    padding: 0.5rem;
+  }
+
+  .po-document-preview {
+    padding: 0.75rem;
+  }
+
+  .po-document-title {
+    font-size: 1.25rem;
+  }
+
+  .po-details-table,
+  .po-items-preview-table,
+  .po-totals-table {
+    font-size: 0.75rem;
+  }
+
+  .po-details-table-header,
+  .po-details-table-cell,
+  .po-items-table-header-cell,
+  .po-items-table-body-cell,
+  .po-totals-table-cell {
+    padding: 0.25rem;
+  }
+}

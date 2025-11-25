@@ -1,22 +1,40 @@
-import React, { useContext } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { InvoiceContext } from '../../context/InvoiceContext';
 import InvoiceA4 from './InvoiceA4';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { createInvoice } from '../../services/api.js';
 
 const Items = () => {
-  const { items, setItems, customerDetails, bankDetails } = useContext(InvoiceContext);
+  const { items, setItems, customerDetails, bankDetails, invoiceNumber, issueDate } = useContext(InvoiceContext);
   const [showInvoice, setShowInvoice] = React.useState(false);
-  const [companyDetails] = React.useState({
+  const [isSaved, setIsSaved] = React.useState(false);
+  const companyDetails = React.useState({
     name: 'VISTA ENGG SOLUTIONS PRIVATE LIMITED',
     address: '677, 1st Floor, Spacelance, 27th Main Road, 13th Cross HSR Layout, Sector 1, Bangalore, Karnataka',
     gst: '29AADCV6388Q1ZA',
-  });
-  const [invoiceDetails] = React.useState({
-    number: 'Auto',
-    date: new Date().toISOString().slice(0, 10),
-  });
+  })[0];
+  // Generate invoice number if not set in context - use useMemo to ensure it's stable
+  const actualInvoiceNumber = React.useMemo(() => {
+    if (invoiceNumber && invoiceNumber !== 'Auto' && invoiceNumber.trim() !== '') {
+      return invoiceNumber;
+    }
+    // Generate invoice number in format 001, 002, ... based on current date/time
+    const now = new Date();
+    const num = now.getFullYear().toString().slice(-2) +
+      (now.getMonth() + 1).toString().padStart(2, '0') +
+      now.getDate().toString().padStart(2, '0') +
+      now.getHours().toString().padStart(2, '0') +
+      now.getMinutes().toString().padStart(2, '0') +
+      now.getSeconds().toString().padStart(2, '0');
+    return num.slice(-3).padStart(3, '0');
+  }, [invoiceNumber]); // Only regenerate if invoiceNumber from context changes
+
+  const invoiceDetails = React.useMemo(() => ({
+    number: actualInvoiceNumber,
+    date: issueDate || new Date().toISOString().slice(0, 10),
+  }), [actualInvoiceNumber, issueDate]);
   const [logo] = React.useState(null);
   const [isPdfMode, setIsPdfMode] = React.useState(false);
   const invoiceRef = React.useRef();
@@ -120,7 +138,36 @@ const Items = () => {
         }
       }
 
-      pdf.save('invoice.pdf');
+      // Generate PDF as blob for S3 upload
+      const pdfBlob = pdf.output('blob');
+      const fileName = `invoice_${invoiceDetails.number || new Date().toISOString().slice(0, 10)}.pdf`;
+      
+      // Upload to S3
+      try {
+        const { uploadPdfToS3, updateInvoiceS3Url } = await import('../../services/api.js');
+        const uploadResult = await uploadPdfToS3(pdfBlob, fileName, 'Invoice');
+        console.log('✅ Invoice PDF uploaded to S3:', uploadResult.url);
+
+        // Update database with S3 URL - use the actual invoice number
+        const actualInvoiceNumber = invoiceDetails.number;
+        if (actualInvoiceNumber && actualInvoiceNumber !== 'Auto' && actualInvoiceNumber.trim() !== '') {
+          try {
+            await updateInvoiceS3Url(actualInvoiceNumber, uploadResult.url);
+            console.log('✅ Database updated with S3 URL for invoice:', actualInvoiceNumber);
+          } catch (dbError) {
+            console.warn('⚠️ Could not update database with S3 URL:', dbError.message);
+            console.warn('Invoice number used:', actualInvoiceNumber);
+          }
+        } else {
+          console.warn('⚠️ Cannot update S3 URL: Invoice number is missing or invalid');
+        }
+      } catch (uploadError) {
+        console.error('❌ Error uploading PDF to S3:', uploadError);
+        console.warn('PDF downloaded but not saved to S3. Error:', uploadError.message);
+      }
+
+      // Download the PDF to user's computer
+      pdf.save(fileName);
       setIsPdfMode(false);
     }, 800); // Further increased timeout to ensure elements are properly rendered
   };
@@ -134,7 +181,18 @@ const Items = () => {
         >
           ×
         </button>
-        <div className="text-2xl font-bold mb-4">Invoice Preview</div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-2xl font-bold">Invoice Preview</div>
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors shadow-md"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+            </svg>
+            Back to Home
+          </button>
+        </div>
         <div ref={invoiceRef} className="bg-white" style={{ position: 'relative', width: '794px', margin: '0 auto' }}>
           <InvoiceA4
             customer={customerDetails}
@@ -154,6 +212,86 @@ const Items = () => {
   // Calculate grand totals
   const grandTotalTax = items.reduce((sum, item) => sum + Number(getTotalTaxAmount(item)), 0);
   const grandTotalAmount = items.reduce((sum, item) => sum + Number(getTotalAmount(item)), 0);
+
+  // Save invoice to database when preview is shown
+  useEffect(() => {
+    const saveInvoice = async () => {
+      if (!showInvoice || isSaved) return; // Don't save if preview not shown or already saved
+      
+      // Validate required fields before saving
+      const actualInvoiceNumber = invoiceDetails.number;
+      const actualInvoiceDate = invoiceDetails.date || new Date().toISOString().split('T')[0];
+      const actualTotalAmount = grandTotalAmount || 0;
+      
+      if (!actualInvoiceNumber || actualInvoiceNumber === 'Auto') {
+        console.warn('⚠️ Cannot save: Invoice number is missing or invalid');
+        return;
+      }
+      
+      if (!actualInvoiceDate) {
+        console.warn('⚠️ Cannot save: Invoice date is missing');
+        return;
+      }
+      
+      if (!actualTotalAmount || actualTotalAmount <= 0) {
+        console.warn('⚠️ Cannot save: Total amount is missing or invalid');
+        return;
+      }
+      
+      if (!companyDetails.name) {
+        console.warn('⚠️ Cannot save: Company name is missing');
+        return;
+      }
+      
+      try {
+        const dbData = {
+          invoiceNumber: actualInvoiceNumber,
+          invoiceDate: actualInvoiceDate,
+          totalAmount: Number(actualTotalAmount),
+          fromAddress: {
+            companyName: companyDetails.name || '',
+            address: companyDetails.address || '',
+            gst: companyDetails.gst || '',
+          },
+          toAddress: {
+            name: customerDetails.name || '',
+            address: customerDetails.address || '',
+          },
+          fullInvoiceData: {
+            companyDetails,
+            customerDetails,
+            bankDetails,
+            invoiceDetails: {
+              ...invoiceDetails,
+              number: actualInvoiceNumber,
+              date: actualInvoiceDate,
+            },
+            items,
+          },
+        };
+
+        console.log('Saving invoice with data:', {
+          invoiceNumber: dbData.invoiceNumber,
+          invoiceDate: dbData.invoiceDate,
+          totalAmount: dbData.totalAmount,
+          fromCompany: dbData.fromAddress.companyName,
+        });
+
+        await createInvoice(dbData);
+        console.log('✅ Invoice saved to database');
+        setIsSaved(true);
+      } catch (error) {
+        console.error('❌ Error saving invoice to database:', error);
+        console.warn('⚠️ Could not save invoice to database:', error.message);
+        // Don't block the user - just log the error
+      }
+    };
+
+    // Only save if we have required data
+    if (showInvoice && customerDetails.name && companyDetails.name) {
+      saveInvoice();
+    }
+  }, [showInvoice, isSaved, invoiceDetails, grandTotalAmount, customerDetails, companyDetails, items, bankDetails]); // Added all dependencies
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-200 to-violet-400 flex flex-col items-center justify-center py-10 px-2">

@@ -1,21 +1,34 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { QuotationContext } from "../../context/QuotationContext"; 
 
 const QuotationDetails = () => {
   const navigate = useNavigate();
-  const { setQuotationDetails } = useContext(QuotationContext);
+  const { quotationDetails, setQuotationDetails } = useContext(QuotationContext);
 
   const [details, setDetails] = useState({
-    deliveryDays: "",
-    validityDays: "",
-    paymentDays: "",
+    projectName: quotationDetails?.projectName || "",
+    deliveryDays: quotationDetails?.deliveryDays || "",
+    validityDays: quotationDetails?.validityDays || "",
+    paymentDays: quotationDetails?.paymentDays || "",
   });
+
+  // Sync state when quotationDetails from context changes
+  useEffect(() => {
+    if (quotationDetails) {
+      setDetails({
+        projectName: quotationDetails.projectName || "",
+        deliveryDays: quotationDetails.deliveryDays || "",
+        validityDays: quotationDetails.validityDays || "",
+        paymentDays: quotationDetails.paymentDays || "",
+      });
+    }
+  }, [quotationDetails]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    // ✅ Allow only numbers
-    if (/^\d*$/.test(value)) {
+    // ✅ Allow only numbers for numeric fields, allow text for projectName
+    if (name === 'projectName' || /^\d*$/.test(value)) {
       setDetails((prev) => ({ ...prev, [name]: value }));
     }
   };
@@ -25,6 +38,7 @@ const QuotationDetails = () => {
 
     // ✅ Save details to context
     setQuotationDetails({
+      projectName: details.projectName,
       deliveryDays: details.deliveryDays,
       validityDays: details.validityDays,
       paymentDays: details.paymentDays,
@@ -42,6 +56,21 @@ const QuotationDetails = () => {
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block mb-1 font-medium text-gray-700">
+              Project Name
+            </label>
+            <input
+              type="text"
+              name="projectName"
+              value={details.projectName}
+              onChange={handleChange}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="Enter project name"
+              required
+            />
+          </div>
+
           <div>
             <label className="block mb-1 font-medium text-gray-700">
               Delivery Period (in days)
