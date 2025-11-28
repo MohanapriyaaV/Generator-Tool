@@ -458,3 +458,17 @@ export const getAllPurchaseOrders = async () => {
   }
 };
 
+// Get next PO number (for auto-incrementing)
+export const getNextPoNumber = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/purchase-orders/next-po-number`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch next PO number');
+    }
+    return data.poNumber;
+  } catch (error) {
+    console.error('Error fetching next PO number:', error);
+    throw error;
+  }
+};

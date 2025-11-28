@@ -11,6 +11,20 @@ const PurchaseOrderPreview = () => {
   const [data, setData] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const previewRef = useRef();
+  const generatedPoNumeric = location.state?.generatedPoNumeric || null;
+
+  // Helper to parse PO number to numeric
+  const parseBackendPoToNumeric = (backendPo) => {
+    if (!backendPo) return null;
+    const m = backendPo.match(/(\d+)/);
+    return m ? parseInt(m[0], 10) : null;
+  };
+
+  // Helper to format VIS PO
+  const formatVISPo = (num) => {
+    if (num === null || num === undefined) return '';
+    return `VIS_PO_${String(num).padStart(4, '0')}`;
+  };
 
   useEffect(() => {
     if (location.state?.data) {
@@ -63,6 +77,52 @@ const PurchaseOrderPreview = () => {
 
   const handleDownloadPDF = async () => {
     if (!previewRef.current) return;
+
+    // Validate PO number before generating PDF
+    const poNumber = formData.poNumber?.trim();
+    if (!poNumber) {
+      alert('PO number is required');
+      return;
+    }
+
+    // Check format
+    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
+      alert('PO number must be in format VIS_PO_0001');
+      return;
+    }
+
+    // Extract numeric part
+    const numericPart = parseBackendPoToNumeric(poNumber);
+    if (numericPart === null) {
+      alert('Invalid PO number format');
+      return;
+    }
+
+    // Check if it's in ascending order from generated number
+    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
+      alert(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
+      return;
+    }
+
+    // Check uniqueness in database
+    try {
+      const { getAllPurchaseOrders } = await import('../../services/api.js');
+      const allPOs = await getAllPurchaseOrders();
+      const existingPO = allPOs.find(po => {
+        const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
+        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
+      });
+
+      if (existingPO) {
+        alert('This PO number already exists. Please use a different number.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking PO number uniqueness:', error);
+      // Continue anyway, but warn user
+      const proceed = window.confirm('Could not verify PO number uniqueness. Do you want to continue?');
+      if (!proceed) return;
+    }
 
     try {
       setIsGeneratingPDF(true);
@@ -147,7 +207,13 @@ const PurchaseOrderPreview = () => {
   };
 
   const handleEditPreview = () => {
-    navigate('/purchase-order', { state: { initialData: formData, items } });
+    navigate('/purchase-order', { 
+      state: { 
+        initialData: formData, 
+        items,
+        generatedPoNumeric 
+      } 
+    });
   };
 
   const handleCreateNew = () => {
