@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import logo from '../../assets/logo.jpg';
+import { generatePurchaseOrderPDF } from '../../services/purchaseOrderPdfGenerator';
 import './PurchaseOrderPreview.css';
 
 const PurchaseOrderPreview = () => {
@@ -76,6 +75,7 @@ const PurchaseOrderPreview = () => {
   const grandTotal = subtotal + taxTotal;
 
   const handleDownloadPDF = async () => {
+<<<<<<< HEAD
     if (!previewRef.current) return;
 
     // Validate PO number before generating PDF
@@ -204,6 +204,16 @@ const PurchaseOrderPreview = () => {
     } finally {
       setIsGeneratingPDF(false);
     }
+=======
+    await generatePurchaseOrderPDF(
+      previewRef,
+      formData,
+      items,
+      tax,
+      grandTotal,
+      setIsGeneratingPDF
+    );
+>>>>>>> 3068eb2e3eeb634b09f400d9185691ff1ea360d7
   };
 
   const handleEditPreview = () => {
@@ -224,55 +234,113 @@ const PurchaseOrderPreview = () => {
     navigate('/');
   };
 
-  const renderAddressBlock = (prefix) => (
-    <div style={{ lineHeight: '1.4', fontSize: 12 }}>
-      <div><strong>Name</strong>: {formData[`${prefix}ClientName`] || '-'}</div>
-      <div><strong>Company</strong>: {formData[`${prefix}CompanyName`] || '-'}</div>
-      <div><strong>Address</strong>: {[
-        formData[`${prefix}Street`],
-        formData[`${prefix}Apartment`],
-        formData[`${prefix}City`],
-        formData[`${prefix}StateCode`],
-        formData[`${prefix}ZipCode`]
-      ].filter(Boolean).join(', ') || '-'}</div>
-      <div><strong>Country</strong>: {(formData[`${prefix}CountryCode`] || '') || '-'}</div>
-      {prefix === 'billTo' && (
-        <>
-          <div><strong>PAN</strong>: {formData.billToPAN || '-'}</div>
-          <div><strong>GSTIN</strong>: {formData.billToGSTIN || '-'}</div>
-          <div><strong>Phone</strong>: {formData.billToPhoneNumber || '-'}</div>
-        </>
-      )}
-      {prefix === 'shipTo' && (
-        <div><strong>Phone</strong>: {formData.shipToPhoneNumber || '-'}</div>
-      )}
-    </div>
-  );
+  const renderAddressBlock = (prefix) => {
+    const addressParts = [
+      formData[`${prefix}Street`],
+      formData[`${prefix}Apartment`],
+      formData[`${prefix}City`],
+      formData[`${prefix}StateCode`],
+      formData[`${prefix}ZipCode`]
+    ].filter(Boolean);
+    
+    const addressLine = addressParts.length > 0 ? addressParts.join(', ') : '-';
+    
+    const labelStyle = { display: 'inline-block', width: '80px', fontWeight: 'bold' };
+    const valueStyle = { display: 'inline-block' };
+    
+    return (
+      <div style={{ lineHeight: '1.6', fontSize: 12 }}>
+        <div style={{ marginBottom: 4 }}>
+          <span style={labelStyle}>Name</span>
+          <span style={valueStyle}>{formData[`${prefix}ClientName`] || '-'}</span>
+        </div>
+        <div style={{ marginBottom: 4 }}>
+          <span style={labelStyle}>Company</span>
+          <span style={valueStyle}>{formData[`${prefix}CompanyName`] || '-'}</span>
+        </div>
+        <div style={{ marginBottom: 4 }}>
+          <span style={labelStyle}>Address</span>
+          <span style={valueStyle}>{addressLine}</span>
+        </div>
+        <div style={{ marginBottom: 4 }}>
+          <span style={labelStyle}>Country</span>
+          <span style={valueStyle}>{(formData[`${prefix}CountryCode`] || '') || '-'}</span>
+        </div>
+        {prefix === 'billTo' && (
+          <>
+            <div style={{ marginBottom: 4 }}>
+              <span style={labelStyle}>PAN</span>
+              <span style={valueStyle}>{formData.billToPAN || '-'}</span>
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <span style={labelStyle}>GSTIN</span>
+              <span style={valueStyle}>{formData.billToGSTIN || '-'}</span>
+            </div>
+            <div style={{ marginBottom: 4 }}>
+              <span style={labelStyle}>Phone</span>
+              <span style={valueStyle}>{formData.billToPhoneNumber || '-'}</span>
+            </div>
+          </>
+        )}
+        {prefix === 'shipTo' && (
+          <div style={{ marginBottom: 4 }}>
+            <span style={labelStyle}>Phone</span>
+            <span style={valueStyle}>{formData.shipToPhoneNumber || '-'}</span>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-8">
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="flex-1">
-          <div className="bg-white shadow rounded-lg p-6" ref={previewRef}>
-            <div className="flex justify-between items-start border-b pb-4 mb-4">
+        <div className="flex-1 flex justify-center">
+          <div className="bg-white shadow rounded-lg" ref={previewRef} style={{
+            width: '794px',
+            minHeight: '1123px',
+            padding: '40px',
+            boxSizing: 'border-box'
+          }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-2 mb-3" style={{ position: 'relative' }}>
               <div>
-                <img src={logo} alt="Vista Logo" style={{ width: 200 }} />
+                <img src={logo} alt="Vista Logo" style={{ width: 280, marginBottom: 12 }} />
+                <div style={{ fontSize: 12, lineHeight: '1.5', textAlign: 'left' }}>
+                  {formData.shipToCompanyName && (
+                    <div style={{ fontWeight: 'bold', marginBottom: 3 }}>{formData.shipToCompanyName}</div>
+                  )}
+                  {(formData.shipToStreet || formData.shipToApartment || formData.shipToCity || formData.shipToStateCode) && (
+                    <div style={{ marginBottom: 3 }}>
+                      {[formData.shipToStreet, formData.shipToApartment, formData.shipToCity, formData.shipToStateCode].filter(Boolean).join(', ')}
+                    </div>
+                  )}
+                  {(formData.shipToCountryCode || formData.shipToZipCode) && (
+                    <div>
+                      {[formData.shipToCountryCode, formData.shipToZipCode].filter(Boolean).join(' ')}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <h1 style={{ fontSize: 28, letterSpacing: 2 }}>PURCHASE ORDER</h1>
-                <div style={{ fontSize: 12, marginTop: 12 }}><strong>PO Number:</strong> {formData.poNumber || '-'}</div>
-                <div style={{ fontSize: 12 }}><strong>Reference:</strong> {formData.referenceNumber || '-'}</div>
-                <div style={{ fontSize: 11, marginTop: 4 }}>The above PO number & reference must appear on all related correspondence shipping papers and invoices</div>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '60px', right: 0, fontSize: 28, letterSpacing: 2, fontWeight: 'bold', lineHeight: 1.2, color: '#333', textAlign: 'right' }}>
+                  <div>PURCHASE</div>
+                  <div>ORDER</div>
+                </div>
+                <div style={{ position: 'absolute', top: '170px', right: 0, textAlign: 'left', width: '100%' }}>
+                  <div style={{ fontSize: 12, marginBottom: 3 }}><strong>PO Number:</strong> {formData.poNumber || '-'}</div>
+                  <div style={{ fontSize: 12, marginBottom: 3 }}><strong>Reference:</strong> {formData.referenceNumber || '-'}</div>
+                  <div style={{ fontSize: 11, marginTop: 3, marginBottom: 0, lineHeight: '1.4' }}>The above PO number & reference must appear on all related correspondence shipping papers and invoices</div>
+                </div>
               </div>
             </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" style={{ fontSize: 13 }}>
-            <div className="border p-4 rounded">
-              <div style={{ fontWeight: 'bold', marginBottom: 8 }}>To:</div>
+            <div className="border p-4 rounded" style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 13 }}>To:</div>
               {renderAddressBlock('billTo')}
             </div>
-            <div className="border p-4 rounded">
-              <div style={{ fontWeight: 'bold', marginBottom: 8 }}>Ship To:</div>
+            <div className="border p-4 rounded" style={{ textAlign: 'left' }}>
+              <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 13 }}>Ship To:</div>
               {renderAddressBlock('shipTo')}
             </div>
           </div>
@@ -300,7 +368,7 @@ const PurchaseOrderPreview = () => {
             <thead>
               <tr>
                 {['Sl. No', 'Item', 'Qty', 'Unit Price', 'HSN/SAC', 'Total'].map((header) => (
-                  <th key={header} style={{ border: '1px solid #000', padding: '6px 8px', background: '#f7f7f7' }}>{header}</th>
+                  <th key={header} style={{ border: '1px solid #000', padding: '6px 8px', background: '#f7f7f7', textAlign: 'center' }}>{header}</th>
                 ))}
               </tr>
             </thead>
@@ -314,15 +382,14 @@ const PurchaseOrderPreview = () => {
                 return (
                   <tr key={item.id}>
                     <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ border: '1px solid #000', padding: '6px 8px' }}>
-                      <div style={{ fontWeight: 'bold' }}>{item.itemName || '-'}</div>
+                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>
+                      <div>{item.itemName || '-'}</div>
                       {item.description && <div style={{ color: '#555', fontSize: 12 }}>{item.description}</div>}
                     </td>
                     <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>{qty}</td>
-                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(price)}</td>
+                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>{formatAmount(price)}</td>
                     <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>{item.hsn || '-'}</td>
-                    
-                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(total)}</td>
+                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'center' }}>{formatAmount(total)}</td>
                   </tr>
                 );
               })}
@@ -371,24 +438,28 @@ const PurchaseOrderPreview = () => {
                   </tr>
                 </tbody>
               </table>
+              <div className="border" style={{ marginTop: '24px', width: '100%', minHeight: '200px', padding: '12px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: 12, textAlign: 'left' }}>Authorization</div>
+                <div style={{ flex: 1, position: 'relative' }}>
+                  <div style={{ position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)', fontSize: 12, textAlign: 'center', width: 'calc(50% - 20px)' }}>
+                    {formData.poDate ? new Date(formData.poDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
+                  </div>
+                </div>
+                <div style={{ borderTop: '1px solid #000', paddingTop: 8, marginTop: 'auto' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ flex: 1, textAlign: 'left' }}>Authorized by</div>
+                    <div style={{ width: '1px', height: '20px', backgroundColor: '#000', margin: '0 8px' }}></div>
+                    <div style={{ flex: 1, textAlign: 'center' }}>Date</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="border rounded-lg p-6 mb-6 text-center">
-            <div style={{ fontWeight: 'bold', marginBottom: 20 }}>Authorization</div>
-            <div style={{ marginBottom: 20 }}>{formData.poDate || '-'}</div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div style={{ borderTop: '1px solid #000', paddingTop: 8 }}>Authorized by</div>
-              </div>
-              <div>
-                <div style={{ borderTop: '1px solid #000', paddingTop: 8 }}>Date</div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ fontSize: 10, textAlign: 'center', color: '#555' }}>
-            Indialand Tech Park, CHIL-SEZ Campus, Coimbatore, Tamil Nadu, India 641035 | www.vistaes.com | CIN: U72200TZ2011PTC017012
+          <div style={{ fontSize: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#555', marginTop: '24px', paddingTop: '12px' }}>
+            <div style={{ textAlign: 'left', flex: 1 }}>Indialand Tech Park, CHILSEZ Campus, Coimbatore, Tamil Nadu, India 641035</div>
+            <div style={{ textAlign: 'center', flex: 1, color: '#22c55e' }}>www.vistaes.com</div>
+            <div style={{ textAlign: 'right', flex: 1 }}>CIN: U72200TZ2011PTC017012</div>
           </div>
         </div>
         </div>
