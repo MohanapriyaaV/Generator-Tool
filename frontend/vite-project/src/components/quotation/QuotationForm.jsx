@@ -394,6 +394,86 @@ const QuotationForm = () => {
     setTerms(newTerms);
   };
 
+  // Clear handlers for sections
+  // Note: clearing details should NOT regenerate quotationNo/referenceNo/issueDate.
+  const clearQuotationDetails = () => {
+    setQuotationDetails(prev => ({
+      ...prev,
+      projectName: '',
+      deliveryDays: '',
+      validityDays: '',
+      paymentDays: ''
+    }));
+  };
+
+  const clearQuotationFrom = () => {
+    setQuotationFrom({
+      companyName: '',
+      street: '',
+      apartment: '',
+      zipCode: '',
+      countryCode: '',
+      stateCode: '',
+      city: '',
+      pan: '',
+      gstin: ''
+    });
+    setFromAddressData({ states: [], cities: [] });
+    setSelectedFromLocation('');
+  };
+
+  const clearQuotationFor = () => {
+    setQuotationFor({
+      personName: '',
+      companyName: '',
+      street: '',
+      apartment: '',
+      zipCode: '',
+      countryCode: '',
+      stateCode: '',
+      city: '',
+      address: ''
+    });
+    setAddressData({ states: [], cities: [] });
+  };
+
+  const clearItems = () => {
+    setQuotationItems([{ name: '', qty: 1, rate: 0, hsn: '', amount: 0 }]);
+  };
+
+  const clearBankDetails = () => {
+    setBankDetails({ bankName: '', accountNumber: '', ifscCode: '', branch: '' });
+  };
+
+  // Clear only the text content of terms, preserve number of text boxes
+  const clearTerms = () => {
+    setTerms(prev => (prev.length > 0 ? prev.map(() => '') : ['']));
+  };
+
+  const addTerm = () => {
+    setTerms(prev => [...prev, '']);
+  };
+
+  const removeTerm = (index) => {
+    setTerms(prev => {
+      const arr = [...prev];
+      arr.splice(index, 1);
+      return arr.length > 0 ? arr : [''];
+    });
+  };
+
+  const clearAll = () => {
+    const confirmed = window.confirm('Clear all sections? This will reset form fields but keep generated IDs.');
+    if (!confirmed) return;
+    clearQuotationDetails();
+    clearQuotationFrom();
+    clearQuotationFor();
+    clearItems();
+    clearBankDetails();
+    clearTerms();
+    setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
+  };
+
   const subtotal = quotationItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const cgstAmount = subtotal * (Number(globalTaxes?.cgst || 0)) / 100;
   const sgstAmount = subtotal * (Number(globalTaxes?.sgst || 0)) / 100;
@@ -443,9 +523,15 @@ const QuotationForm = () => {
 
      {/* Quotation Details */}
   <div className="bg-white rounded-lg p-6 shadow mb-8">
-    <h3 className="text-lg font-semibold mb-4 text-gray-800">
-      Quotation Details
-    </h3>
+    <div className="flex justify-between items-center mb-4">
+      <h3 className="text-lg font-semibold text-gray-800">Quotation Details</h3>
+      <button
+        onClick={clearQuotationDetails}
+        className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+      >
+        Clear
+      </button>
+    </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
       {/* Project Name */}
       <div className="sm:col-span-2">
@@ -528,17 +614,25 @@ const QuotationForm = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white rounded-lg p-6 shadow">
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">Quotation From</h3>
-              <select 
-                onChange={handleFromLocationSelect} 
-                value={selectedFromLocation}
-                className="border rounded-md p-2 text-sm"
-              >
+                  <h3 className="text-lg font-semibold text-gray-800">Quotation From</h3>
+                <div className="flex items-center gap-2">
+                  <select 
+                    onChange={handleFromLocationSelect} 
+                    value={selectedFromLocation}
+                    className="border rounded-md p-2 text-sm"
+                  >
                 <option value="">Select Location</option>
                 {Object.keys(officeLocations).map(location => (
                   <option key={location} value={location}>{location}</option>
                 ))}
               </select>
+                  <button
+                    onClick={clearQuotationFrom}
+                    className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+                  >
+                    Clear
+                  </button>
+                </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -731,7 +825,15 @@ const QuotationForm = () => {
           </div>
 
           <div className="bg-white rounded-lg p-6 shadow">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Quotation For</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Quotation For</h3>
+              <button
+                onClick={clearQuotationFor}
+                className="text-sm text-gray-500 hover:text-gray-800 border px-3 py-1 rounded-md"
+              >
+                Clear
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -741,7 +843,7 @@ const QuotationForm = () => {
                   className="w-full border rounded-md p-2" 
                   value={quotationFor.personName || ''} 
                   onChange={e => setQuotationFor(prev => ({ ...prev, personName: e.target.value }))} 
-                />s
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -872,12 +974,20 @@ const QuotationForm = () => {
           <div className="p-6 bg-gray-50 border-b">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-800">Items</h3>
-              <button 
-                onClick={handleAddItem} 
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
-              >
-                + Add Item
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleAddItem} 
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-sky-600 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
+                >
+                  + Add Item
+                </button>
+                <button
+                  onClick={clearItems}
+                  className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1022,7 +1132,15 @@ const QuotationForm = () => {
 
         {/* Bank Details */}
         <div className="bg-white rounded-lg p-6 shadow-md mb-8">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Bank Details</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Bank Details</h3>
+            <button
+              onClick={clearBankDetails}
+              className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+            >
+              Clear
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Bank Name</label>
@@ -1067,6 +1185,20 @@ const QuotationForm = () => {
         <div className="bg-white rounded-lg p-6 shadow-md mb-20">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Terms & Conditions</h3>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={addTerm}
+                className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+              >
+                + Add
+              </button>
+              <button
+                onClick={clearTerms}
+                className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
+              >
+                Clear
+              </button>
+            </div>
           </div>
           <div className="space-y-3">
             {terms.map((term, index) => (
@@ -1077,13 +1209,26 @@ const QuotationForm = () => {
                   onChange={(e) => handleTermChange(index, e.target.value)}
                   className="flex-1 border rounded-md p-2 min-h-[60px] text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500"
                 />
+                <button
+                  onClick={() => removeTerm(index)}
+                  className="ml-2 text-red-600 hover:text-red-800 text-lg font-bold"
+                  title="Remove term"
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Generate Document Button */}
-        <div className="fixed bottom-6 right-6">
+        {/* Generate Document Button + Clear All */}
+        <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
+          <button
+            onClick={clearAll}
+            className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-6 py-2 rounded-lg shadow hover:from-sky-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500"
+          >
+            Clear All
+          </button>
           <button
             onClick={() => navigate('/quotation-preview')}
             className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-8 py-3 rounded-lg shadow-lg hover:from-sky-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-500 transform hover:scale-105 transition-all duration-200"

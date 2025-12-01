@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
+import { getNextPoNumber, getAllPurchaseOrders } from '../../services/api.js';
 import './PurchaseOrderForm.css';
 
 // Auto-resize textarea component
@@ -147,7 +148,8 @@ const AddressSection = React.memo(({
   states, 
   cities, 
   selectedLocation = '',
-  onAdd
+  onAdd,
+  onClear
 }) => {
   const countryCode = formData[`${prefix}CountryCode`] || '';
   const stateCode = formData[`${prefix}StateCode`] || '';
@@ -159,18 +161,29 @@ const AddressSection = React.memo(({
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <p className="text-sm text-gray-600">{subTitle}</p>
         </div>
-        {showLocationSelect && (
-          <select 
-            onChange={handleLocationSelect} 
-            value={selectedLocation}
-            className="border rounded-md p-2 text-sm"
-          >
-            <option value="">Select Location</option>
-            {Object.keys(officeLocations).map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex gap-2 items-center">
+          {showLocationSelect && (
+            <select 
+              onChange={handleLocationSelect} 
+              value={selectedLocation}
+              className="border rounded-md p-2 text-sm"
+            >
+              <option value="">Select Location</option>
+              {Object.keys(officeLocations).map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+          )}
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-3 py-1 rounded-md shadow hover:from-teal-700 hover:to-purple-900"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -440,6 +453,95 @@ const PurchaseOrderForm = () => {
    Email: info@vistaes.com`
   });
 
+  // PO number control
+  const [generatedPoNumeric, setGeneratedPoNumeric] = useState(null); // numeric part of generated PO
+  const [poError, setPoError] = useState('');
+
+  // Helpers for PO formatting/parsing
+  const parseBackendPoToNumeric = (backendPo) => {
+    if (!backendPo) return null;
+    const m = backendPo.match(/(\d+)/);
+    return m ? parseInt(m[0], 10) : null;
+  };
+
+  const formatVISPo = (num) => {
+    if (num === null || num === undefined) return '';
+    return `VIS_PO_${String(num).padStart(4, '0')}`;
+  };
+
+  // Section-specific clear handlers
+  const clearRequisitionerDetailsFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      requisitionerName: '',
+      fobDestination: '',
+      shippedVia: '',
+      terms: ''
+    }));
+  };
+
+  const clearAdditionalDetailsFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      // preserve auto-generated PO number and user-entered reference number
+      poDate: '',
+      dateTime: '',
+      projectName: '',
+      currency: ''
+    }));
+  };
+
+  const clearTermsFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      termsAndConditions: ''
+    }));
+  };
+
+  const clearBillToFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      billToClientName: '',
+      billToCompanyName: '',
+      billToStreet: '',
+      billToApartment: '',
+      billToZipCode: '',
+      billToCountryCode: '',
+      billToStateCode: '',
+      billToCity: '',
+      billToPAN: '',
+      billToGSTIN: '',
+      billToPhoneNumber: ''
+    }));
+    setSelectedLocationBill('');
+    setAddressData(prev => ({ ...prev, billTo: { states: [], cities: [] } }));
+  };
+
+  const clearShipToFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      shipToClientName: '',
+      shipToCompanyName: '',
+      shipToStreet: '',
+      shipToApartment: '',
+      shipToZipCode: '',
+      shipToCountryCode: '',
+      shipToStateCode: '',
+      shipToCity: '',
+      shipToPhoneNumber: ''
+    }));
+    setSelectedLocationShip('');
+    setAddressData(prev => ({ ...prev, shipTo: { states: [], cities: [] } }));
+  };
+
+  const clearItemsFields = () => {
+    setItems([{ id: 1, itemName: '', description: '', quantity: '', unitPrice: '', hsn: '', total: 0 }]);
+    setCgstRate('');
+    setSgstRate('');
+    setIgstRate('');
+    setTaxAmount(0);
+  };
+
   // Map country names to ISO codes
   const countryNameToCode = {
     'India': 'IN',
@@ -605,6 +707,14 @@ const PurchaseOrderForm = () => {
     const { name, value } = e.target;
     let newValue = value;
     
+    // PO Number validation - allow editing but validate format
+    if (name === 'poNumber') {
+      // Allow VIS_PO_ format
+      setPoError('');
+      setFormData(prev => ({ ...prev, [name]: newValue }));
+      return;
+    }
+    
     // Zip Code validation - only numbers
     if (name.includes('ZipCode')) {
       newValue = value.replace(/[^0-9]/g, '');
@@ -623,10 +733,84 @@ const PurchaseOrderForm = () => {
     setFormData(prev => ({ ...prev, [name]: newValue }));
   }, []);
 
+  // Generate PO number on component mount
+  useEffect(() => {
+    // Skip if editing existing PO (has initialData)
+    if (location.state?.initialData) {
+      return;
+    }
+
+    // Skip if PO number already exists
+    if (formData.poNumber && formData.poNumber.trim() !== '') {
+      return;
+    }
+
+    const generatePoNumber = async () => {
+      try {
+        console.log('🔄 [PurchaseOrderForm] Starting PO number generation...');
+        const poNumber = await getNextPoNumber();
+        console.log('✅ [PurchaseOrderForm] Generated PO number:', poNumber);
+        
+        // Extract numeric part for validation
+        const numericPart = parseBackendPoToNumeric(poNumber);
+        setGeneratedPoNumeric(numericPart);
+        
+        setFormData(prev => ({
+          ...prev,
+          poNumber: poNumber
+        }));
+      } catch (error) {
+        console.error('❌ [PurchaseOrderForm] Error generating PO number:', error);
+        // Fallback: generate from existing POs
+        try {
+          const allPOs = await getAllPurchaseOrders();
+          const existingNumbers = allPOs
+            .map(po => po.poNumber || po.fullPurchaseOrderData?.poNumber)
+            .filter(num => num && typeof num === 'string' && (num.startsWith('VIS_PO_') || num.startsWith('PO-')));
+          
+          let counter = 1;
+          let newNumber;
+          let isUnique = false;
+          
+          while (!isUnique && counter < 10000) {
+            const paddedCounter = counter.toString().padStart(4, '0');
+            newNumber = `VIS_PO_${paddedCounter}`;
+            
+            if (!existingNumbers.includes(newNumber)) {
+              isUnique = true;
+            } else {
+              counter++;
+            }
+          }
+          
+          if (newNumber) {
+            setGeneratedPoNumeric(counter);
+            setFormData(prev => ({
+              ...prev,
+              poNumber: newNumber
+            }));
+          }
+        } catch (fallbackError) {
+          console.error('❌ [PurchaseOrderForm] Fallback PO generation failed:', fallbackError);
+        }
+      }
+    };
+
+    generatePoNumber();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // populate form when editing from preview
   useEffect(() => {
     if (location.state?.initialData) {
       setFormData(location.state.initialData);
+      // Use passed generatedPoNumeric or extract from PO number
+      if (location.state?.generatedPoNumeric !== undefined) {
+        setGeneratedPoNumeric(location.state.generatedPoNumeric);
+      } else if (location.state.initialData.poNumber) {
+        const numericPart = parseBackendPoToNumeric(location.state.initialData.poNumber);
+        setGeneratedPoNumeric(numericPart);
+      }
     }
     if (location.state?.items) {
       setItems(location.state.items);
@@ -708,9 +892,73 @@ const PurchaseOrderForm = () => {
     }).format(amount);
   };
 
-  const handleSubmit = (e) => {
+  // Validate PO number before submission
+  const validatePoNumber = async () => {
+    const poNumber = formData.poNumber?.trim();
+    if (!poNumber) {
+      setPoError('PO number is required');
+      return false;
+    }
+
+    // Check format
+    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
+      setPoError('PO number must be in format VIS_PO_0001');
+      return false;
+    }
+
+    // Extract numeric part
+    const numericPart = parseBackendPoToNumeric(poNumber);
+    if (numericPart === null) {
+      setPoError('Invalid PO number format');
+      return false;
+    }
+
+    // Check if it's in ascending order from generated number
+    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
+      setPoError(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
+      return false;
+    }
+
+    // Check uniqueness in database
+    try {
+      const allPOs = await getAllPurchaseOrders();
+      const existingPO = allPOs.find(po => {
+        const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
+        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
+      });
+
+      if (existingPO) {
+        setPoError('This PO number already exists. Please use a different number.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking PO number uniqueness:', error);
+      // Continue anyway, but warn user
+      setPoError('Could not verify PO number uniqueness. Please check manually.');
+      return false;
+    }
+
+    setPoError('');
+    return true;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/purchase-order-preview', { state: { data: { formData, items, tax: { cgstRate, sgstRate, igstRate, taxAmount } } } });
+    
+    // Validate PO number before proceeding
+    const isValid = await validatePoNumber();
+    if (!isValid) {
+      // Scroll to top to show error
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    navigate('/purchase-order-preview', { 
+      state: { 
+        data: { formData, items, tax: { cgstRate, sgstRate, igstRate, taxAmount } },
+        generatedPoNumeric 
+      } 
+    });
   };
 
   return (
@@ -732,6 +980,10 @@ const PurchaseOrderForm = () => {
                   Back to Home
                 </button>
                 <h1 className="text-2xl font-bold">Purchase Order</h1>
+              </div>
+              <div className="text-right">
+                <div className="text-sm opacity-90">PO Number</div>
+                <div className="font-semibold text-lg">{formData.poNumber || '-'}</div>
               </div>
             </div>
           </div>
@@ -756,7 +1008,7 @@ const PurchaseOrderForm = () => {
                   states={addressData.billTo.states}
                   cities={addressData.billTo.cities}
                   selectedLocation={selectedLocationBill}
-                  onAdd={() => console.log('Bill To added')}
+                  onClear={clearBillToFields}
                 />
             </div>
             <div className="bg-white rounded-lg p-6 shadow">
@@ -775,15 +1027,26 @@ const PurchaseOrderForm = () => {
                 states={addressData.shipTo.states}
                 cities={addressData.shipTo.cities}
                 selectedLocation={selectedLocationShip}
-                onAdd={() => console.log('Ship To added')}
+                onClear={clearShipToFields}
               />
             </div>
           </div>
 
           {/* Requisitioner Details Section */}
           <div className="bg-white rounded-lg p-6 shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Requisitioner Details</h3>
-            <p className="text-sm text-gray-600 mb-4">Enter requisitioner details</p>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">Requisitioner Details</h3>
+                <p className="text-sm text-gray-600">Enter requisitioner details</p>
+              </div>
+              <button
+                type="button"
+                onClick={clearRequisitionerDetailsFields}
+                className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-3 py-1 rounded-md shadow hover:from-teal-700 hover:to-purple-900"
+              >
+                Clear
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -838,19 +1101,21 @@ const PurchaseOrderForm = () => {
                 />
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-semibold transition-colors"
-              >
-                Add
-              </button>
-            </div>
+            
           </div>
 
           {/* Additional Details Section */}
           <div className="bg-white rounded-lg p-6 shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Additional Details</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Additional Details</h3>
+              <button
+                type="button"
+                onClick={clearAdditionalDetailsFields}
+                className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-3 py-1 rounded-md shadow hover:from-teal-700 hover:to-purple-900"
+              >
+                Clear
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -862,8 +1127,11 @@ const PurchaseOrderForm = () => {
                   value={formData.poNumber}
                   onChange={handleChange}
                   className="w-full border rounded-md p-2"
-                  placeholder="Enter PO number"
+                  placeholder="VIS_PO_0001"
                 />
+                {poError && (
+                  <div className="text-xs text-red-500 mt-1">{poError}</div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -939,15 +1207,24 @@ const PurchaseOrderForm = () => {
           {/* Items Section */}
           <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
             <div className="p-6 bg-gray-50 border-b">
-              <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-800">Item & Description</h3>
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="text-blue-600 hover:text-blue-800 font-semibold"
-                >
-                  + Add item
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={clearItemsFields}
+                    className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-3 py-1 rounded-md shadow hover:from-teal-700 hover:to-purple-900"
+                  >
+                    Clear
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                  >
+                    + Add item
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1120,12 +1397,21 @@ const PurchaseOrderForm = () => {
           <div className="bg-white rounded-lg p-6 shadow mb-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Terms and Conditions</h3>
-              <button
-                type="button"
-                className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
-              >
-                Edit
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="text-blue-600 hover:text-blue-800 text-sm font-semibold"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={clearTermsFields}
+                  className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-3 py-1 rounded-md shadow hover:from-teal-700 hover:to-purple-900 text-sm"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             <textarea
               name="termsAndConditions"

@@ -10,6 +10,20 @@ const PurchaseOrderPreview = () => {
   const [data, setData] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const previewRef = useRef();
+  const generatedPoNumeric = location.state?.generatedPoNumeric || null;
+
+  // Helper to parse PO number to numeric
+  const parseBackendPoToNumeric = (backendPo) => {
+    if (!backendPo) return null;
+    const m = backendPo.match(/(\d+)/);
+    return m ? parseInt(m[0], 10) : null;
+  };
+
+  // Helper to format VIS PO
+  const formatVISPo = (num) => {
+    if (num === null || num === undefined) return '';
+    return `VIS_PO_${String(num).padStart(4, '0')}`;
+  };
 
   useEffect(() => {
     if (location.state?.data) {
@@ -61,6 +75,136 @@ const PurchaseOrderPreview = () => {
   const grandTotal = subtotal + taxTotal;
 
   const handleDownloadPDF = async () => {
+<<<<<<< HEAD
+    if (!previewRef.current) return;
+
+    // Validate PO number before generating PDF
+    const poNumber = formData.poNumber?.trim();
+    if (!poNumber) {
+      alert('PO number is required');
+      return;
+    }
+
+    // Check format
+    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
+      alert('PO number must be in format VIS_PO_0001');
+      return;
+    }
+
+    // Extract numeric part
+    const numericPart = parseBackendPoToNumeric(poNumber);
+    if (numericPart === null) {
+      alert('Invalid PO number format');
+      return;
+    }
+
+    // Check if it's in ascending order from generated number
+    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
+      alert(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
+      return;
+    }
+
+    // Check uniqueness in database
+    try {
+      const { getAllPurchaseOrders } = await import('../../services/api.js');
+      const allPOs = await getAllPurchaseOrders();
+      const existingPO = allPOs.find(po => {
+        const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
+        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
+      });
+
+      if (existingPO) {
+        alert('This PO number already exists. Please use a different number.');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking PO number uniqueness:', error);
+      // Continue anyway, but warn user
+      const proceed = window.confirm('Could not verify PO number uniqueness. Do you want to continue?');
+      if (!proceed) return;
+    }
+
+    try {
+      setIsGeneratingPDF(true);
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        useCORS: true
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`purchase_order_${formData.poNumber || 'document'}.pdf`);
+
+      // Also generate blob and upload to S3, then save purchase order record
+      try {
+        // jsPDF: use output('blob') to get a Blob
+        const blob = pdf.output && typeof pdf.output === 'function' ? pdf.output('blob') : null;
+        if (blob) {
+          try {
+            const { uploadPdfToS3, createPurchaseOrder } = await import('../../services/api.js');
+            const fileName = `PurchaseOrder_${formData.poNumber || 'document'}_${new Date().toISOString().split('T')[0]}.pdf`;
+            console.log('Uploading PO PDF to S3...');
+            const uploadResult = await uploadPdfToS3(blob, fileName, 'PurchaseOrder');
+            console.log('✅ PDF uploaded to S3:', uploadResult.url);
+
+            // Build payload for creating purchase order record
+            const payload = {
+              poNumber: formData.poNumber || '',
+              // ensure valid date is sent
+              poDate: formData.poDate || new Date().toISOString(),
+              totalAmount: Number((grandTotal) || 0),
+              referenceNumber: formData.referenceNumber || '',
+              projectName: formData.projectName || '',
+              billToAddress: {
+                clientName: formData.billToClientName || '',
+                companyName: formData.billToCompanyName || '',
+                street: formData.billToStreet || '',
+                apartment: formData.billToApartment || '',
+                city: formData.billToCity || '',
+                zipCode: formData.billToZipCode || '',
+                country: formData.billToCountryCode || '',
+                state: formData.billToStateCode || '',
+                pan: formData.billToPAN || '',
+                gstin: formData.billToGSTIN || '',
+                phoneNumber: formData.billToPhoneNumber || '',
+              },
+              shipToAddress: {
+                clientName: formData.shipToClientName || '',
+                companyName: formData.shipToCompanyName || '',
+                street: formData.shipToStreet || '',
+                apartment: formData.shipToApartment || '',
+                city: formData.shipToCity || '',
+                zipCode: formData.shipToZipCode || '',
+                country: formData.shipToCountryCode || '',
+                state: formData.shipToStateCode || '',
+                phoneNumber: formData.shipToPhoneNumber || '',
+              },
+              s3Url: uploadResult.url || '',
+              fullPurchaseOrderData: { formData, items, tax }
+            };
+
+            try {
+              const created = await createPurchaseOrder(payload);
+              console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
+            } catch (dbError) {
+              console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
+            }
+          } catch (uploadError) {
+            console.error('❌ Error uploading PO PDF to S3:', uploadError);
+          }
+        } else {
+          console.warn('Could not create Blob from PDF (pdf.output not available)');
+        }
+      } catch (err) {
+        console.warn('Could not generate blob from PDF for upload:', err);
+      }
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+=======
     await generatePurchaseOrderPDF(
       previewRef,
       formData,
@@ -69,10 +213,17 @@ const PurchaseOrderPreview = () => {
       grandTotal,
       setIsGeneratingPDF
     );
+>>>>>>> 3068eb2e3eeb634b09f400d9185691ff1ea360d7
   };
 
   const handleEditPreview = () => {
-    navigate('/purchase-order', { state: { initialData: formData, items } });
+    navigate('/purchase-order', { 
+      state: { 
+        initialData: formData, 
+        items,
+        generatedPoNumeric 
+      } 
+    });
   };
 
   const handleCreateNew = () => {

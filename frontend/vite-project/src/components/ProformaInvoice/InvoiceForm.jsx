@@ -141,7 +141,7 @@ const indiaBankDetails = {
 };
 
 // AddressSection component - defined outside to prevent recreation
-const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect = false, formData, errors, handleChange, handleLocationSelect, handleCountryChange, handleStateChange, countries, states, cities, selectedLocation = '' }) => {
+const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect = false, onClear = null, formData, errors, handleChange, handleLocationSelect, handleCountryChange, handleStateChange, countries, states, cities, selectedLocation = '' }) => {
   const countryCode = formData[`${prefix}CountryCode`] || '';
   const stateCode = formData[`${prefix}StateCode`] || '';
   
@@ -152,18 +152,29 @@ const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <p className="text-sm text-gray-600">{subTitle}</p>
         </div>
-        {showLocationSelect && (
-          <select 
-            onChange={handleLocationSelect} 
-            value={selectedLocation}
-            className="border rounded-md p-2 text-sm"
-          >
-            <option value="">Select Location</option>
-            {Object.keys(officeLocations).map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {showLocationSelect && (
+            <select 
+              onChange={handleLocationSelect} 
+              value={selectedLocation}
+              className="border rounded-md p-2 text-sm"
+            >
+              <option value="">Select Location</option>
+              {Object.keys(officeLocations).map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+          )}
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-blue-700 hover:to-indigo-700"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {prefix !== 'invoiceFrom' && (
@@ -464,6 +475,99 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     setErrors(prev => ({ ...prev, [fieldName]: '' }));
     return true;
   }, []);
+
+  // Clear handlers for individual sections
+  const clearInvoiceFromFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      invoiceFromCompanyName: '',
+      invoiceFromStreet: '',
+      invoiceFromApartment: '',
+      invoiceFromZipCode: '',
+      invoiceFromCountryCode: '',
+      invoiceFromStateCode: '',
+      invoiceFromCity: '',
+      invoiceFromPAN: '',
+      invoiceFromGSTIN: ''
+    }));
+    setSelectedLocation('');
+  };
+
+  const clearBillToFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      billToClientName: '',
+      billToCompanyName: '',
+      billToStreet: '',
+      billToApartment: '',
+      billToZipCode: '',
+      billToCountryCode: '',
+      billToStateCode: '',
+      billToCity: '',
+      billToPAN: '',
+      billToGSTIN: '',
+      billToPhoneNumber: ''
+    }));
+  };
+
+  const clearShipToFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      shipToClientName: '',
+      shipToCompanyName: '',
+      shipToStreet: '',
+      shipToApartment: '',
+      shipToZipCode: '',
+      shipToCountryCode: '',
+      shipToStateCode: '',
+      shipToCity: '',
+      shipToPAN: '',
+      shipToGSTIN: '',
+      shipToPhoneNumber: ''
+    }));
+  };
+
+  const clearInvoiceDetailsFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      invoiceDate: '',
+      deliveryNote: '',
+      paymentTerms: '',
+      referenceNo: '',
+      otherReferences: '',
+      buyersOrderNo: '',
+      buyersOrderDate: '',
+      dispatchDocNo: '',
+      deliveryNoteDate: '',
+      dispatchedThrough: '',
+      destination: '',
+      termsOfDelivery: '',
+      quotationReferenceNo: '',
+      projectName: ''
+    }));
+  };
+
+  const clearItemsFields = () => {
+    setItems([{ id: 1, description: '', hsn: '', quantity: '', rate: '' }]);
+  };
+
+  const clearBankDetailsFields = () => {
+    setBankDetails({ bankName: '', accountNo: '', branchIfsc: '', pan: '' });
+  };
+
+  // Clear all fields
+  const clearAllFields = () => {
+    const confirmed = window.confirm('Clear all fields? This will reset the form.');
+    if (!confirmed) return;
+    
+    clearInvoiceFromFields();
+    clearBillToFields();
+    clearShipToFields();
+    clearInvoiceDetailsFields();
+    clearItemsFields();
+    clearBankDetailsFields();
+    setErrors({});
+  };
 
   // Handle reference number lookup
   const handleReferenceNoLookup = useCallback(async () => {
@@ -1501,6 +1605,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                 title="Proforma Invoice From"
                 subTitle="Enter company details"
                 showLocationSelect={true}
+                onClear={clearInvoiceFromFields}
                 formData={formData}
                 errors={errors}
                 handleChange={handleChange}
@@ -1578,6 +1683,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                 prefix="billTo"
                 title="Bill To"
                 subTitle="Enter customer details"
+                onClear={clearBillToFields}
                 formData={formData}
                 errors={errors}
                 handleChange={handleChange}
@@ -1594,6 +1700,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                 prefix="shipTo"
                 title="Ship To"
                 subTitle="Enter shipping details"
+                onClear={clearShipToFields}
                 formData={formData}
                 errors={errors}
                 handleChange={handleChange}
@@ -1609,7 +1716,16 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
 
           {/* Invoice Details Section */}
           <div className="bg-white rounded-lg p-6 shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Invoice Details</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Invoice Details</h3>
+              <button
+                type="button"
+                onClick={clearInvoiceDetailsFields}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-blue-700 hover:to-indigo-700"
+              >
+                Clear
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1762,7 +1878,16 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
 
           {/* Bank Details Section */}
           <div className="bg-white rounded-lg p-6 shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Bank Details</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Bank Details</h3>
+              <button
+                type="button"
+                onClick={clearBankDetailsFields}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-blue-700 hover:to-indigo-700"
+              >
+                Clear
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">Bank Name</label>
@@ -1807,13 +1932,22 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
           <div className="bg-white rounded-lg p-6 shadow mb-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Goods Details</h3>
-              <button 
-                type="button" 
-                onClick={addItem} 
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                + Add Item
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  type="button" 
+                  onClick={addItem} 
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  + Add Item
+                </button>
+                <button
+                  type="button"
+                  onClick={clearItemsFields}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-blue-700 hover:to-indigo-700"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -1934,8 +2068,15 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
             </div>
           </div>
 
-          {/* Submit Button */}
-          <div className="fixed bottom-6 right-6">
+          {/* Submit Button + Clear All */}
+          <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
+            <button 
+              type="button"
+              onClick={clearAllFields}
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg shadow hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Clear All
+            </button>
             <button 
               type="submit" 
               className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-8 py-3 rounded-lg shadow-lg hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200"

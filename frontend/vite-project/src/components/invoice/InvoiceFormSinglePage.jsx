@@ -142,7 +142,7 @@ const indiaBankDetails = {
 };
 
 // AddressSection component
-const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect = false, formData, errors, handleChange, handleLocationSelect, handleCountryChange, handleStateChange, countries, states, cities, selectedLocation = '' }) => {
+const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect = false, onClear = null, formData, errors, handleChange, handleLocationSelect, handleCountryChange, handleStateChange, countries, states, cities, selectedLocation = '' }) => {
   const countryCode = formData[`${prefix}CountryCode`] || '';
   const stateCode = formData[`${prefix}StateCode`] || '';
   
@@ -153,18 +153,29 @@ const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <p className="text-sm text-gray-600">{subTitle}</p>
         </div>
-        {showLocationSelect && (
-          <select 
-            onChange={handleLocationSelect} 
-            value={selectedLocation}
-            className="border rounded-md p-2 text-sm"
-          >
-            <option value="">Select Location</option>
-            {Object.keys(officeLocations).map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        )}
+        <div className="flex items-center gap-2">
+          {showLocationSelect && (
+            <select 
+              onChange={handleLocationSelect} 
+              value={selectedLocation}
+              className="border rounded-md p-2 text-sm"
+            >
+              <option value="">Select Location</option>
+              {Object.keys(officeLocations).map(location => (
+                <option key={location} value={location}>{location}</option>
+              ))}
+            </select>
+          )}
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-3 py-1 rounded-md shadow hover:from-violet-700 hover:to-violet-900"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {prefix !== 'invoiceFrom' && (
@@ -414,6 +425,77 @@ const InvoiceFormSinglePage = () => {
     termsOfDelivery: '',
     projectName: ''
   });
+
+  // Clear section handlers
+  const clearInvoiceFromFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      invoiceFromCompanyName: '',
+      invoiceFromStreet: '',
+      invoiceFromApartment: '',
+      invoiceFromZipCode: '',
+      invoiceFromCountryCode: '',
+      invoiceFromStateCode: '',
+      invoiceFromCity: '',
+      invoiceFromPAN: '',
+      invoiceFromGSTIN: ''
+    }));
+    setSelectedLocation('');
+  };
+
+  const clearBillToFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      billToClientName: '',
+      billToCompanyName: '',
+      billToStreet: '',
+      billToApartment: '',
+      billToZipCode: '',
+      billToCountryCode: '',
+      billToStateCode: '',
+      billToCity: '',
+      billToPAN: '',
+      billToGSTIN: '',
+      billToPhoneNumber: ''
+    }));
+  };
+
+  const clearInvoiceDetailsFields = () => {
+    setFormData(prev => ({
+      ...prev,
+      invoiceDate: '',
+      paymentTerms: '',
+      referenceNo: '',
+      otherReferences: '',
+      buyersOrderNo: '',
+      buyersOrderDate: '',
+      termsOfDelivery: '',
+      projectName: ''
+    }));
+  };
+
+  const clearItemsFields = () => {
+    setItems([{ id: 1, description: '', hsn: '', quantity: '', rate: '' }]);
+  };
+
+  const clearBankDetailsFields = () => {
+    setBankDetails({ bankName: '', accountNo: '', branchIfsc: '', pan: '' });
+  };
+
+  // Clear all fields handler
+  const clearAllFields = () => {
+    const confirmed = window.confirm('Clear all fields? This will reset the form.');
+    if (!confirmed) return;
+
+    clearInvoiceFromFields();
+    clearBillToFields();
+    clearInvoiceDetailsFields();
+    clearItemsFields();
+    clearBankDetailsFields();
+    setCustomerDetails({ name: '', address: '' });
+    setSelectedLocation('');
+    setErrors({});
+  };
 
   // Generate unique invoice number in inv0000 format
   useEffect(() => {
@@ -1299,6 +1381,7 @@ const InvoiceFormSinglePage = () => {
             title="Invoice From"
             subTitle="Enter company details"
             showLocationSelect={true}
+            onClear={clearInvoiceFromFields}
             formData={formData}
             errors={errors}
             handleChange={handleFormChange}
@@ -1354,6 +1437,7 @@ const InvoiceFormSinglePage = () => {
             prefix="billTo"
             title="Bill To"
             subTitle="Enter customer details"
+            onClear={clearBillToFields}
             formData={formData}
             errors={errors}
             handleChange={handleFormChange}
@@ -1368,7 +1452,16 @@ const InvoiceFormSinglePage = () => {
 
         {/* Invoice Details Section */}
         <div className="bg-white rounded-lg p-6 shadow mb-8">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Invoice Details</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Invoice Details</h3>
+            <button
+              type="button"
+              onClick={clearInvoiceDetailsFields}
+              className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-3 py-1 rounded-md shadow hover:from-violet-700 hover:to-violet-900"
+            >
+              Clear
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1475,12 +1568,21 @@ const InvoiceFormSinglePage = () => {
           <div className="p-6 bg-gray-50 border-b">
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-semibold text-gray-800">Items</h3>
-              <button
-                onClick={handleAddItem}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
-              >
-                + Add Item
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleAddItem}
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                >
+                  + Add Item
+                </button>
+                <button
+                  type="button"
+                  onClick={clearItemsFields}
+                  className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-3 py-1 rounded-md shadow hover:from-violet-700 hover:to-violet-900"
+                >
+                  Clear
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1592,7 +1694,16 @@ const InvoiceFormSinglePage = () => {
 
         {/* Bank Details */}
         <div className="bg-white rounded-lg p-6 shadow-md mb-8">
-          <h3 className="text-lg font-semibold mb-4 text-gray-800">Bank Details</h3>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Bank Details</h3>
+            <button
+              type="button"
+              onClick={clearBankDetailsFields}
+              className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-3 py-1 rounded-md shadow hover:from-violet-700 hover:to-violet-900"
+            >
+              Clear
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Bank Name</label>
@@ -1634,7 +1745,14 @@ const InvoiceFormSinglePage = () => {
         </div>
 
         {/* Generate Invoice Button */}
-        <div className="fixed bottom-6 right-6">
+        <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
+          <button
+            type="button"
+            onClick={clearAllFields}
+            className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-6 py-2 rounded-lg shadow hover:from-violet-700 hover:to-violet-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+          >
+            Clear All
+          </button>
           <button
             onClick={() => setShowInvoice(true)}
             className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-8 py-3 rounded-lg shadow-lg hover:from-violet-700 hover:to-violet-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transform hover:scale-105 transition-all duration-200"
