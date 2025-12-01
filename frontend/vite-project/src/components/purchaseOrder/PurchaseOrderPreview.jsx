@@ -94,7 +94,8 @@ const PurchaseOrderPreview = () => {
     
     const addressLine = addressParts.length > 0 ? addressParts.join(', ') : '-';
     
-    const labelStyle = { display: 'inline-block', width: '80px', fontWeight: 'bold' };
+    // Match table cell padding (6px 8px) - labels align with table content
+    const labelStyle = { display: 'inline-block', width: '70px', fontWeight: 'bold' };
     const valueStyle = { display: 'inline-block' };
     
     return (
@@ -184,11 +185,11 @@ const PurchaseOrderPreview = () => {
             </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" style={{ fontSize: 13 }}>
-            <div className="border p-4 rounded" style={{ textAlign: 'left' }}>
+            <div className="border rounded" style={{ textAlign: 'left', padding: '6px 8px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 13 }}>To:</div>
               {renderAddressBlock('billTo')}
             </div>
-            <div className="border p-4 rounded" style={{ textAlign: 'left' }}>
+            <div className="border rounded" style={{ textAlign: 'left', padding: '6px 8px' }}>
               <div style={{ fontWeight: 'bold', marginBottom: 12, fontSize: 13 }}>Ship To:</div>
               {renderAddressBlock('shipTo')}
             </div>
