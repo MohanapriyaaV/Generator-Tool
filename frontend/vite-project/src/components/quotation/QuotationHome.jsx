@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { Eye, X } from "lucide-react"; 
 import { QuotationContext } from "../../context/QuotationContext";
+import { getNextQuotationNumber, getAllQuotations } from "../../services/api";
+import { getCurrentFinancialYear, extractFinancialYear, extractSequenceNumber, buildDocumentNumber } from "../../utils/financialYear.js";
 
 const QuotationHome = () => {
   const navigate = useNavigate();
@@ -9,6 +11,9 @@ const QuotationHome = () => {
 
 
   const [quotationNumber, setQuotationNumber] = useState("");
+  const [sequenceDigits, setSequenceDigits] = useState("0001");
+  const [quotationError, setQuotationError] = useState("");
+  const [generatedSequence, setGeneratedSequence] = useState(null);
   const [issueDate, setIssueDate] = useState("");
   const [showQuotationForModal, setShowQuotationForModal] = useState(false);
   const [showQuotationFromModal, setShowQuotationFromModal] = useState(false);
@@ -16,23 +21,111 @@ const QuotationHome = () => {
   const [showDeliveryDetailsModal, setShowDeliveryDetailsModal] = useState(false);
 
   useEffect(() => {
-    // Use quotation number from context if available, otherwise generate new one
-    if (quotationDetails?.quotationNo) {
-      setQuotationNumber(quotationDetails.quotationNo);
-    } else {
-      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-      const randomPart = Math.floor(100 + Math.random() * 900);
-      const newQuotationNo = `QT-${datePart}-${randomPart}`;
-      setQuotationNumber(newQuotationNo);
-      // Save to context
-      setQuotationDetails(prev => ({ ...prev, quotationNo: newQuotationNo }));
-    }
+    const initializeQuotation = async () => {
+      // Use quotation number from context if available, otherwise generate new one
+      if (quotationDetails?.quotationNo) {
+        const fullNumber = quotationDetails.quotationNo;
+        setQuotationNumber(fullNumber);
+        const seq = extractSequenceNumber(fullNumber);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString().padStart(4, '0'));
+          setGeneratedSequence(seq);
+        }
+      } else {
+        try {
+          const newQuotationNo = await getNextQuotationNumber();
+          setQuotationNumber(newQuotationNo);
+          const seq = extractSequenceNumber(newQuotationNo);
+          if (seq !== null) {
+            setSequenceDigits(seq.toString().padStart(4, '0'));
+            setGeneratedSequence(seq);
+          }
+          setQuotationDetails(prev => ({ ...prev, quotationNo: newQuotationNo }));
+        } catch (error) {
+          console.error('Error generating quotation number:', error);
+          // Fallback
+          const financialYear = getCurrentFinancialYear();
+          const fallbackNo = buildDocumentNumber('QT', financialYear, 1);
+          setQuotationNumber(fallbackNo);
+          setSequenceDigits('0001');
+          setGeneratedSequence(1);
+          setQuotationDetails(prev => ({ ...prev, quotationNo: fallbackNo }));
+        }
+      }
+      
+      // Use issue date from context if available
+      if (quotationDetails?.issueDate) {
+        setIssueDate(quotationDetails.issueDate);
+      }
+    };
     
-    // Use issue date from context if available
-    if (quotationDetails?.issueDate) {
-      setIssueDate(quotationDetails.issueDate);
+    initializeQuotation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Update full quotation number when sequence digits change
+  useEffect(() => {
+    if (quotationNumber && sequenceDigits) {
+      const financialYear = extractFinancialYear(quotationNumber) || getCurrentFinancialYear();
+      const newFullNumber = buildDocumentNumber('QT', financialYear, sequenceDigits);
+      if (newFullNumber !== quotationNumber) {
+        setQuotationNumber(newFullNumber);
+        setQuotationDetails(prev => ({ ...prev, quotationNo: newFullNumber }));
+      }
     }
-  }, [quotationDetails, setQuotationDetails]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequenceDigits]);
+
+  // Validate quotation number
+  const validateQuotationNumber = async () => {
+    const seq = parseInt(sequenceDigits, 10);
+    if (isNaN(seq) || seq < 1 || seq > 9999) {
+      setQuotationError('Sequence must be between 0001 and 9999');
+      return false;
+    }
+
+    // Check ascending order
+    if (generatedSequence !== null && seq < generatedSequence) {
+      setQuotationError(`Sequence must be ${generatedSequence.toString().padStart(4, '0')} or higher`);
+      return false;
+    }
+
+    // Check uniqueness
+    try {
+      const allQuotations = await getAllQuotations();
+      const financialYear = extractFinancialYear(quotationNumber) || getCurrentFinancialYear();
+      const checkNumber = buildDocumentNumber('QT', financialYear, seq);
+      
+      const existing = allQuotations.find(q => {
+        const qNo = q.quotationNo || q.fullQuotationData?.quotationNo || '';
+        return qNo === checkNumber;
+      });
+
+      if (existing) {
+        setQuotationError('This quotation number already exists. Please use a different number.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking quotation number uniqueness:', error);
+      setQuotationError('Could not verify quotation number uniqueness. Please check manually.');
+      return false;
+    }
+
+    setQuotationError('');
+    return true;
+  };
+
+  const handleSequenceChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    setSequenceDigits(value.padStart(4, '0'));
+    setQuotationError('');
+  };
+
+  const handleSequenceBlur = async () => {
+    if (sequenceDigits) {
+      await validateQuotationNumber();
+    }
+  };
 
   // Update context when issue date changes
   const handleIssueDateChange = (e) => {
@@ -119,12 +212,27 @@ const QuotationHome = () => {
           <label className="block text-gray-700 font-medium mb-2">
             Quotation Number
           </label>
-          <input
-            type="text"
-            value={quotationNumber}
-            readOnly
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 cursor-not-allowed"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold text-gray-700">QT</span>
+            <span className="text-lg font-semibold text-gray-700">
+              {extractFinancialYear(quotationNumber) || getCurrentFinancialYear()}
+            </span>
+            <input
+              type="text"
+              value={sequenceDigits}
+              onChange={handleSequenceChange}
+              onBlur={handleSequenceBlur}
+              maxLength={4}
+              className="w-20 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="0001"
+            />
+          </div>
+          {quotationError && (
+            <p className="text-red-500 text-sm mt-1">{quotationError}</p>
+          )}
+          <p className="text-gray-500 text-xs mt-1">
+            Full Number: <strong>{quotationNumber}</strong>
+          </p>
         </div>
 
       {/* Delivery Details */}

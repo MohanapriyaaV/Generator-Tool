@@ -65,146 +65,17 @@ const PurchaseOrderPreview = () => {
   };
 
   const subtotal = calculateSubtotal();
+  const taxEnabled = tax?.taxEnabled !== false; // Default to true if not provided
   const cgstRate = tax?.cgstRate || 0;
   const sgstRate = tax?.sgstRate || 0;
   const igstRate = tax?.igstRate || 0;
-  const taxTotal = parseFloat(tax?.taxAmount) || 0;
-  const cgstAmount = (subtotal * (parseFloat(cgstRate) || 0)) / 100;
-  const sgstAmount = (subtotal * (parseFloat(sgstRate) || 0)) / 100;
-  const igstAmount = (subtotal * (parseFloat(igstRate) || 0)) / 100;
+  const taxTotal = taxEnabled ? (parseFloat(tax?.taxAmount) || 0) : 0;
+  const cgstAmount = taxEnabled ? (subtotal * (parseFloat(cgstRate) || 0)) / 100 : 0;
+  const sgstAmount = taxEnabled ? (subtotal * (parseFloat(sgstRate) || 0)) / 100 : 0;
+  const igstAmount = taxEnabled ? (subtotal * (parseFloat(igstRate) || 0)) / 100 : 0;
   const grandTotal = subtotal + taxTotal;
 
   const handleDownloadPDF = async () => {
-<<<<<<< HEAD
-    if (!previewRef.current) return;
-
-    // Validate PO number before generating PDF
-    const poNumber = formData.poNumber?.trim();
-    if (!poNumber) {
-      alert('PO number is required');
-      return;
-    }
-
-    // Check format
-    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
-      alert('PO number must be in format VIS_PO_0001');
-      return;
-    }
-
-    // Extract numeric part
-    const numericPart = parseBackendPoToNumeric(poNumber);
-    if (numericPart === null) {
-      alert('Invalid PO number format');
-      return;
-    }
-
-    // Check if it's in ascending order from generated number
-    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
-      alert(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
-      return;
-    }
-
-    // Check uniqueness in database
-    try {
-      const { getAllPurchaseOrders } = await import('../../services/api.js');
-      const allPOs = await getAllPurchaseOrders();
-      const existingPO = allPOs.find(po => {
-        const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
-        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
-      });
-
-      if (existingPO) {
-        alert('This PO number already exists. Please use a different number.');
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking PO number uniqueness:', error);
-      // Continue anyway, but warn user
-      const proceed = window.confirm('Could not verify PO number uniqueness. Do you want to continue?');
-      if (!proceed) return;
-    }
-
-    try {
-      setIsGeneratingPDF(true);
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 2,
-        useCORS: true
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`purchase_order_${formData.poNumber || 'document'}.pdf`);
-
-      // Also generate blob and upload to S3, then save purchase order record
-      try {
-        // jsPDF: use output('blob') to get a Blob
-        const blob = pdf.output && typeof pdf.output === 'function' ? pdf.output('blob') : null;
-        if (blob) {
-          try {
-            const { uploadPdfToS3, createPurchaseOrder } = await import('../../services/api.js');
-            const fileName = `PurchaseOrder_${formData.poNumber || 'document'}_${new Date().toISOString().split('T')[0]}.pdf`;
-            console.log('Uploading PO PDF to S3...');
-            const uploadResult = await uploadPdfToS3(blob, fileName, 'PurchaseOrder');
-            console.log('✅ PDF uploaded to S3:', uploadResult.url);
-
-            // Build payload for creating purchase order record
-            const payload = {
-              poNumber: formData.poNumber || '',
-              // ensure valid date is sent
-              poDate: formData.poDate || new Date().toISOString(),
-              totalAmount: Number((grandTotal) || 0),
-              referenceNumber: formData.referenceNumber || '',
-              projectName: formData.projectName || '',
-              billToAddress: {
-                clientName: formData.billToClientName || '',
-                companyName: formData.billToCompanyName || '',
-                street: formData.billToStreet || '',
-                apartment: formData.billToApartment || '',
-                city: formData.billToCity || '',
-                zipCode: formData.billToZipCode || '',
-                country: formData.billToCountryCode || '',
-                state: formData.billToStateCode || '',
-                pan: formData.billToPAN || '',
-                gstin: formData.billToGSTIN || '',
-                phoneNumber: formData.billToPhoneNumber || '',
-              },
-              shipToAddress: {
-                clientName: formData.shipToClientName || '',
-                companyName: formData.shipToCompanyName || '',
-                street: formData.shipToStreet || '',
-                apartment: formData.shipToApartment || '',
-                city: formData.shipToCity || '',
-                zipCode: formData.shipToZipCode || '',
-                country: formData.shipToCountryCode || '',
-                state: formData.shipToStateCode || '',
-                phoneNumber: formData.shipToPhoneNumber || '',
-              },
-              s3Url: uploadResult.url || '',
-              fullPurchaseOrderData: { formData, items, tax }
-            };
-
-            try {
-              const created = await createPurchaseOrder(payload);
-              console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
-            } catch (dbError) {
-              console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
-            }
-          } catch (uploadError) {
-            console.error('❌ Error uploading PO PDF to S3:', uploadError);
-          }
-        } else {
-          console.warn('Could not create Blob from PDF (pdf.output not available)');
-        }
-      } catch (err) {
-        console.warn('Could not generate blob from PDF for upload:', err);
-      }
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-=======
     await generatePurchaseOrderPDF(
       previewRef,
       formData,
@@ -213,7 +84,6 @@ const PurchaseOrderPreview = () => {
       grandTotal,
       setIsGeneratingPDF
     );
->>>>>>> 3068eb2e3eeb634b09f400d9185691ff1ea360d7
   };
 
   const handleEditPreview = () => {
@@ -411,28 +281,30 @@ const PurchaseOrderPreview = () => {
                     <td style={{ border: '1px solid #000', padding: '6px 8px' }}>Subtotal</td>
                     <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(subtotal)}</td>
                   </tr>
-                  { (parseFloat(cgstRate) || 0) > 0 && (
+                  {taxEnabled && (parseFloat(cgstRate) || 0) > 0 && (
                     <tr>
                       <td style={{ border: '1px solid #000', padding: '6px 8px' }}>CGST ({cgstRate}%)</td>
                       <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(cgstAmount)}</td>
                     </tr>
                   )}
-                  { (parseFloat(sgstRate) || 0) > 0 && (
+                  {taxEnabled && (parseFloat(sgstRate) || 0) > 0 && (
                     <tr>
                       <td style={{ border: '1px solid #000', padding: '6px 8px' }}>SGST ({sgstRate}%)</td>
                       <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(sgstAmount)}</td>
                     </tr>
                   )}
-                  { (parseFloat(igstRate) || 0) > 0 && (
+                  {taxEnabled && (parseFloat(igstRate) || 0) > 0 && (
                     <tr>
                       <td style={{ border: '1px solid #000', padding: '6px 8px' }}>IGST ({igstRate}%)</td>
                       <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(igstAmount)}</td>
                     </tr>
                   )}
-                  <tr>
-                    <td style={{ border: '1px solid #000', padding: '6px 8px' }}>Total Tax</td>
-                    <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(taxTotal)}</td>
-                  </tr>
+                  {taxEnabled && taxTotal > 0 && (
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '6px 8px' }}>Total Tax</td>
+                      <td style={{ border: '1px solid #000', padding: '6px 8px', textAlign: 'right' }}>{formatAmount(taxTotal)}</td>
+                    </tr>
+                  )}
                   <tr style={{ background: '#0f172a', color: '#fff', fontWeight: 'bold' }}>
                     <td style={{ border: '1px solid #000', padding: '10px 12px' }}>Total</td>
                     <td style={{ border: '1px solid #000', padding: '10px 12px', textAlign: 'right' }}>{formatAmount(grandTotal)}</td>

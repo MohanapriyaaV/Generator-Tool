@@ -4,10 +4,12 @@ import {
   getQuotations,
   getQuotationById,
   updateQuotation,
+  getNextQuotationNumber,
 } from "../controllers/quotation_controller.js";
 
 const router = express.Router();
 
+router.get("/next-quotation-number", getNextQuotationNumber); // Get next quotation number
 router.post("/", createQuotation);   // Save quotation
 router.get("/", getQuotations);      // Fetch all quotations
 router.get("/:id", getQuotationById); // Fetch single quotation

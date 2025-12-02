@@ -8,6 +8,7 @@ const InvoiceHistory = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchInvoices();
@@ -113,6 +114,75 @@ const InvoiceHistory = () => {
     navigate('/');
   };
 
+  const normalizeText = (value) => {
+    if (!value && value !== 0) return '';
+    return String(value);
+  };
+
+  const rowMatchesSearch = (invoice) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+
+    let actualInvoiceNumber = invoice.invoiceNumber;
+    if (!actualInvoiceNumber || actualInvoiceNumber === 'Auto' || actualInvoiceNumber.trim() === '') {
+      if (invoice.fullInvoiceData?.invoiceNumber && invoice.fullInvoiceData.invoiceNumber !== 'Auto') {
+        actualInvoiceNumber = invoice.fullInvoiceData.invoiceNumber;
+      } else if (invoice.fullInvoiceData?.invoiceDetails?.number && invoice.fullInvoiceData.invoiceDetails.number !== 'Auto') {
+        actualInvoiceNumber = invoice.fullInvoiceData.invoiceDetails.number;
+      } else if (invoice.fullInvoiceData?.invoiceNumber) {
+        actualInvoiceNumber = invoice.fullInvoiceData.invoiceNumber;
+      } else if (invoice._id) {
+        const idStr = invoice._id.toString();
+        actualInvoiceNumber = `INV-${idStr.slice(-6).toUpperCase()}`;
+      } else {
+        actualInvoiceNumber = '';
+      }
+    }
+
+    const projectName = invoice.projectName ||
+      invoice.fullInvoiceData?.projectName ||
+      invoice.fullInvoiceData?.formData?.projectName || '';
+
+    const referenceNo = invoice.referenceNo ||
+      invoice.fullInvoiceData?.invoiceDetails?.referenceNo ||
+      invoice.fullInvoiceData?.formData?.referenceNo || '';
+
+    const vendorData = formatAddressData(invoice.toAddress, invoice.fullInvoiceData);
+    const amountText = normalizeText(invoice.totalAmount);
+
+    const searchable = [
+      projectName,
+      referenceNo,
+      vendorData.name,
+      vendorData.company,
+      vendorData.address,
+      actualInvoiceNumber,
+      amountText,
+    ].join(' ').toLowerCase();
+
+    return searchable.includes(term);
+  };
+
+  const Highlight = ({ text }) => {
+    if (!searchTerm.trim()) return <>{text}</>;
+
+    const term = searchTerm;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = String(text ?? '').split(regex);
+
+    return (
+      <>
+        {parts.map((part, idx) =>
+          regex.test(part) ? (
+            <span key={idx} className="highlight-match">{part}</span>
+          ) : (
+            <span key={idx}>{part}</span>
+          )
+        )}
+      </>
+    );
+  };
+
   if (loading) {
     return (
       <div className="history-container">
@@ -148,6 +218,15 @@ const InvoiceHistory = () => {
         </button>
         <h1 className="history-title">Invoice History</h1>
         <div className="history-actions">
+          <div className="history-search-wrapper">
+            <input
+              type="text"
+              className="history-search-input"
+              placeholder="Search by any word (project, vendor, number, amount...)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <button onClick={fetchInvoices} className="refresh-button">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -181,7 +260,7 @@ const InvoiceHistory = () => {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice, index) => {
+                {invoices.filter(rowMatchesSearch).map((invoice, index) => {
                   // Get actual invoice number - check multiple sources
                   let actualInvoiceNumber = invoice.invoiceNumber;
                   
@@ -224,26 +303,38 @@ const InvoiceHistory = () => {
                   return (
                   <tr key={invoice._id}>
                     <td className="serial-number">{index + 1}</td>
-                    <td>{projectName}</td>
-                    <td>{referenceNo}</td>
+                    <td><Highlight text={projectName} /></td>
+                    <td><Highlight text={referenceNo} /></td>
                     <td>
                       <div className="address-cell">
                         {hasNameOrCompany ? (
                           <>
-                            {vendorData.name && <strong>{vendorData.name}</strong>}
+                            {vendorData.name && <strong><Highlight text={vendorData.name} /></strong>}
                             {vendorData.name && vendorData.company && <br />}
-                            {vendorData.company && <strong>{vendorData.company}</strong>}
+                            {vendorData.company && <strong><Highlight text={vendorData.company} /></strong>}
                             {hasAddress && (hasNameOrCompany ? <br /> : '')}
-                            {hasAddress && <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span>}
+                            {hasAddress && (
+                              <span style={{ fontSize: '0.85em', color: '#666' }}>
+                                <Highlight text={vendorData.address} />
+                              </span>
+                            )}
                             {!hasNameOrCompany && !hasAddress && '-'}
                           </>
                         ) : (
-                          hasAddress ? <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span> : '-'
+                          hasAddress ? (
+                            <span style={{ fontSize: '0.85em', color: '#666' }}>
+                              <Highlight text={vendorData.address} />
+                            </span>
+                          ) : '-'
                         )}
                       </div>
                     </td>
-                    <td className="invoice-number">{actualInvoiceNumber}</td>
-                    <td className="amount-cell">{formatAmount(invoice.totalAmount)}</td>
+                    <td className="invoice-number">
+                      <Highlight text={actualInvoiceNumber} />
+                    </td>
+                    <td className="amount-cell">
+                      <Highlight text={formatAmount(invoice.totalAmount)} />
+                    </td>
                     <td className="s3-url-cell">
                       {invoice.s3Url ? (
                         <a 

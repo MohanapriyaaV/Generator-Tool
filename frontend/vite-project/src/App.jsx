@@ -79,16 +79,36 @@ const InvoiceFormWrapper = () => {
         fullInvoiceData: formData, // Store complete invoice data
       };
 
-      // Import API function dynamically
-      const { createProformaInvoice } = await import('./services/api.js');
+      // Import API functions dynamically
+      const { createProformaInvoice, updateProformaInvoice, getAllProformaInvoices } = await import('./services/api.js');
       
-      // Try to save to database (non-blocking - won't prevent navigation)
+      // Check if this is an edit (has _id in initialData or formData)
+      const isEdit = initialData?._id || formData._id;
+      let savedInvoice = null;
+      
+      // Try to save/update to database (non-blocking - won't prevent navigation)
       try {
-        const savedInvoice = await createProformaInvoice(dbData);
-        console.log('✅ Invoice saved to database:', savedInvoice);
+        if (isEdit) {
+          // Update existing invoice
+          const invoiceId = initialData?._id || formData._id;
+          console.log('🔄 Updating existing invoice with ID:', invoiceId);
+          savedInvoice = await updateProformaInvoice(invoiceId, dbData);
+          console.log('✅ Invoice updated in database:', savedInvoice);
+          // Add _id to formData for future edits
+          formData._id = invoiceId;
+        } else {
+          // Create new invoice
+          console.log('🆕 Creating new invoice');
+          savedInvoice = await createProformaInvoice(dbData);
+          console.log('✅ Invoice saved to database:', savedInvoice);
+          // Add _id to formData if returned
+          if (savedInvoice?._id) {
+            formData._id = savedInvoice._id;
+          }
+        }
       } catch (saveError) {
         // Log error but don't block the user from viewing preview
-        console.warn('⚠️ Could not save invoice to database:', saveError.message);
+        console.warn('⚠️ Could not save/update invoice to database:', saveError.message);
         // Show a non-blocking notification
         const userWantsToContinue = window.confirm(
           `Warning: Could not save invoice to database.\n\n` +
@@ -102,7 +122,7 @@ const InvoiceFormWrapper = () => {
         }
       }
 
-      // Navigate to preview page with form data in location state
+      // Navigate to preview page with form data in location state (including _id if available)
       navigate('/invoice-preview', { state: { data: formData } });
     } catch (error) {
       console.error('Error in handleSubmit:', error);

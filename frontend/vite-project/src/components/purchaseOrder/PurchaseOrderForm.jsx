@@ -391,6 +391,7 @@ const PurchaseOrderForm = () => {
   const [sgstRate, setSgstRate] = useState('');
   const [igstRate, setIgstRate] = useState('');
   const [taxAmount, setTaxAmount] = useState(0);
+  const [taxEnabled, setTaxEnabled] = useState(true);
   
   // Get all countries - memoized
   const allCountries = useMemo(() => Country.getAllCountries(), []);
@@ -455,6 +456,7 @@ const PurchaseOrderForm = () => {
 
   // PO number control
   const [generatedPoNumeric, setGeneratedPoNumeric] = useState(null); // numeric part of generated PO
+  const [sequenceDigits, setSequenceDigits] = useState('1'); // editable sequence digits
   const [poError, setPoError] = useState('');
 
   // Helpers for PO formatting/parsing
@@ -707,11 +709,8 @@ const PurchaseOrderForm = () => {
     const { name, value } = e.target;
     let newValue = value;
     
-    // PO Number validation - allow editing but validate format
+    // PO Number is now handled by sequenceDigits, so skip this
     if (name === 'poNumber') {
-      // Allow VIS_PO_ format
-      setPoError('');
-      setFormData(prev => ({ ...prev, [name]: newValue }));
       return;
     }
     
@@ -740,8 +739,13 @@ const PurchaseOrderForm = () => {
       return;
     }
 
-    // Skip if PO number already exists
+    // Skip if PO number already exists in formData
     if (formData.poNumber && formData.poNumber.trim() !== '') {
+      return;
+    }
+    
+    // Also check location.state for initialData (in case it's set after this effect runs)
+    if (location.state?.initialData?.poNumber) {
       return;
     }
 
@@ -754,6 +758,11 @@ const PurchaseOrderForm = () => {
         // Extract numeric part for validation
         const numericPart = parseBackendPoToNumeric(poNumber);
         setGeneratedPoNumeric(numericPart);
+        
+        // Set sequence digits
+        if (numericPart !== null) {
+          setSequenceDigits(numericPart.toString()); // No padding - show raw number
+        }
         
         setFormData(prev => ({
           ...prev,
@@ -785,6 +794,7 @@ const PurchaseOrderForm = () => {
           
           if (newNumber) {
             setGeneratedPoNumeric(counter);
+            setSequenceDigits(counter.toString()); // No padding - show raw number
             setFormData(prev => ({
               ...prev,
               poNumber: newNumber
@@ -796,9 +806,12 @@ const PurchaseOrderForm = () => {
       }
     };
 
-    generatePoNumber();
+    // Only generate if initialData is not set
+    if (!location.state?.initialData) {
+      generatePoNumber();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.state?.initialData]);
 
   // populate form when editing from preview
   useEffect(() => {
@@ -807,9 +820,13 @@ const PurchaseOrderForm = () => {
       // Use passed generatedPoNumeric or extract from PO number
       if (location.state?.generatedPoNumeric !== undefined) {
         setGeneratedPoNumeric(location.state.generatedPoNumeric);
+        setSequenceDigits(location.state.generatedPoNumeric.toString()); // No padding - show raw number
       } else if (location.state.initialData.poNumber) {
         const numericPart = parseBackendPoToNumeric(location.state.initialData.poNumber);
         setGeneratedPoNumeric(numericPart);
+        if (numericPart !== null) {
+          setSequenceDigits(numericPart.toString()); // No padding - show raw number
+        }
       }
     }
     if (location.state?.items) {
@@ -869,15 +886,93 @@ const PurchaseOrderForm = () => {
     }, 0);
   };
 
+  // Check if Bill To and Ship To are in the same state
+  const isSameState = () => {
+    const billToState = formData.billToStateCode;
+    const shipToState = formData.shipToStateCode;
+    
+    // Get GSTIN state codes as fallback
+    let billToGSTINState = null;
+    let shipToGSTINState = null;
+    
+    if (formData.billToGSTIN && formData.billToGSTIN.length >= 2) {
+      billToGSTINState = formData.billToGSTIN.substring(0, 2);
+    }
+    
+    if (formData.shipToGSTIN && formData.shipToGSTIN.length >= 2) {
+      shipToGSTINState = formData.shipToGSTIN.substring(0, 2);
+    }
+    
+    // Priority 1: Compare using state codes if both are available
+    if (billToState && shipToState) {
+      return billToState === shipToState;
+    }
+    
+    // Priority 2: Compare using GSTIN state codes if both GSTINs are available
+    if (billToGSTINState && shipToGSTINState) {
+      return billToGSTINState === shipToGSTINState;
+    }
+    
+    // If we can't determine, default to inter-state (IGST)
+    return false;
+  };
+
+  // Auto-update tax when addresses change
+  useEffect(() => {
+    if (taxEnabled) {
+      const sameState = isSameState();
+      if (sameState) {
+        // Intra-state: CGST 9% + SGST 9%
+        setCgstRate('9');
+        setSgstRate('9');
+        setIgstRate('0');
+      } else {
+        // Inter-state: IGST 18%
+        setCgstRate('0');
+        setSgstRate('0');
+        setIgstRate('18');
+      }
+      // Calculate tax after setting rates
+      setTimeout(() => {
+        const subtotal = calculateSubtotal();
+        const sameState = isSameState();
+        if (sameState) {
+          const tax = (subtotal * 18) / 100; // 9% + 9%
+          setTaxAmount(tax);
+        } else {
+          const tax = (subtotal * 18) / 100; // 18%
+          setTaxAmount(tax);
+        }
+      }, 0);
+    } else {
+      setCgstRate('0');
+      setSgstRate('0');
+      setIgstRate('0');
+      setTaxAmount(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.billToStateCode, formData.shipToStateCode, formData.billToGSTIN, formData.shipToGSTIN, taxEnabled, items]);
+
   const calculateTax = () => {
+    if (!taxEnabled) {
+      setTaxAmount(0);
+      return 0;
+    }
+    
     const subtotal = calculateSubtotal();
-    const cgst = parseFloat(cgstRate) || 0;
-    const sgst = parseFloat(sgstRate) || 0;
-    const igst = parseFloat(igstRate) || 0;
-    const totalRate = cgst + sgst + igst;
-    const tax = (subtotal * totalRate) / 100;
-    setTaxAmount(tax);
-    return tax;
+    const sameState = isSameState();
+    
+    if (sameState) {
+      // Intra-state: CGST 9% + SGST 9%
+      const tax = (subtotal * 18) / 100;
+      setTaxAmount(tax);
+      return tax;
+    } else {
+      // Inter-state: IGST 18%
+      const tax = (subtotal * 18) / 100;
+      setTaxAmount(tax);
+      return tax;
+    }
   };
 
   const calculateTotal = () => {
@@ -892,54 +987,90 @@ const PurchaseOrderForm = () => {
     }).format(amount);
   };
 
+  // Update full PO number when sequence digits change
+  useEffect(() => {
+    if (sequenceDigits && sequenceDigits.trim() !== '') {
+      const seq = parseInt(sequenceDigits, 10);
+      if (!isNaN(seq) && seq >= 1 && seq <= 9999) {
+        // Use padded digits only for building the full number format, but keep user input as-is
+        const paddedDigits = sequenceDigits.padStart(4, '0');
+        const newFullNumber = formatVISPo(parseInt(paddedDigits, 10));
+        if (newFullNumber !== formData.poNumber) {
+          setFormData(prev => ({ ...prev, poNumber: newFullNumber }));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequenceDigits]);
+
   // Validate PO number before submission
   const validatePoNumber = async () => {
-    const poNumber = formData.poNumber?.trim();
-    if (!poNumber) {
-      setPoError('PO number is required');
+    const seq = parseInt(sequenceDigits, 10);
+    if (isNaN(seq) || seq < 1 || seq > 9999) {
+      setPoError('Sequence must be between 1 and 9999');
       return false;
     }
 
-    // Check format
-    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
-      setPoError('PO number must be in format VIS_PO_0001');
-      return false;
-    }
-
-    // Extract numeric part
-    const numericPart = parseBackendPoToNumeric(poNumber);
-    if (numericPart === null) {
-      setPoError('Invalid PO number format');
-      return false;
-    }
-
-    // Check if it's in ascending order from generated number
-    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
-      setPoError(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
-      return false;
-    }
-
-    // Check uniqueness in database
+    // Check uniqueness in database only
     try {
       const allPOs = await getAllPurchaseOrders();
+      // Use padded digits for building the full number format
+      const paddedDigits = sequenceDigits.padStart(4, '0');
+      const checkNumber = formatVISPo(parseInt(paddedDigits, 10));
+      
+      console.log('🔍 [PurchaseOrder] Checking uniqueness for:', checkNumber);
+      
+      // Get current PO ID and number if editing (to exclude it from uniqueness check)
+      const currentPOId = location.state?.initialData?._id;
+      const currentPONumber = location.state?.initialData?.poNumber || formData.poNumber;
+      
       const existingPO = allPOs.find(po => {
+        // Skip the current PO if editing (by ID or by number)
+        if (currentPOId && po._id === currentPOId) {
+          return false;
+        }
+        if (currentPONumber) {
+          const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
+          if (existingPoNumber && existingPoNumber.toUpperCase() === currentPONumber.toUpperCase() && 
+              existingPoNumber.toUpperCase() === checkNumber.toUpperCase()) {
+            return false; // Same PO being edited
+          }
+        }
         const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
-        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
+        return existingPoNumber && existingPoNumber.toUpperCase() === checkNumber.toUpperCase();
       });
 
       if (existingPO) {
+        console.log('❌ [PurchaseOrder] Duplicate found:', existingPO);
         setPoError('This PO number already exists. Please use a different number.');
         return false;
       }
+      
+      console.log('✅ [PurchaseOrder] Number is unique');
     } catch (error) {
       console.error('Error checking PO number uniqueness:', error);
-      // Continue anyway, but warn user
       setPoError('Could not verify PO number uniqueness. Please check manually.');
       return false;
     }
 
     setPoError('');
     return true;
+  };
+
+  const handleSequenceChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    // Allow user to edit freely - no padding, no constraints during typing
+    setSequenceDigits(value);
+    setPoError('');
+  };
+
+  const handleSequenceBlur = async () => {
+    // Validate only when user finishes editing
+    if (sequenceDigits && sequenceDigits.trim() !== '') {
+      await validatePoNumber();
+    } else {
+      setPoError('Sequence number is required');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -1121,14 +1252,20 @@ const PurchaseOrderForm = () => {
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   PO number
                 </label>
-                <input
-                  type="text"
-                  name="poNumber"
-                  value={formData.poNumber}
-                  onChange={handleChange}
-                  className="w-full border rounded-md p-2"
-                  placeholder="VIS_PO_0001"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 border rounded-md p-2 bg-gray-50 text-gray-700">
+                    VIS_PO_
+                  </div>
+                  <input
+                    type="text"
+                    value={sequenceDigits}
+                    onChange={handleSequenceChange}
+                    onBlur={handleSequenceBlur}
+                    maxLength={4}
+                    className="w-20 border rounded-md p-2 text-center"
+                    placeholder="1"
+                  />
+                </div>
                 {poError && (
                   <div className="text-xs text-red-500 mt-1">{poError}</div>
                 )}
@@ -1314,7 +1451,25 @@ const PurchaseOrderForm = () => {
 
           {/* Tax Inputs & Financial Summary */}
           <div className="bg-white rounded-lg p-6 shadow mb-8">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">Taxes</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Taxes</h3>
+              <button
+                type="button"
+                onClick={() => setTaxEnabled(!taxEnabled)}
+                className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                  taxEnabled
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-400 text-white hover:bg-gray-500'
+                }`}
+              >
+                {taxEnabled ? 'Disable Tax' : 'Enable Tax'}
+              </button>
+            </div>
+            {taxEnabled && (
+              <div className="mb-4 text-sm text-gray-600">
+                {isSameState() ? 'Same State: CGST 9% + SGST 9%' : 'Different States: IGST 18%'}
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">CGST (%)</label>
@@ -1324,8 +1479,10 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setCgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full border rounded-md p-2"
+                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., 9"
+                  readOnly={taxEnabled}
+                  disabled={taxEnabled}
                 />
               </div>
               <div>
@@ -1336,8 +1493,10 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setSgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full border rounded-md p-2"
+                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., 9"
+                  readOnly={taxEnabled}
+                  disabled={taxEnabled}
                 />
               </div>
               <div>
@@ -1348,8 +1507,10 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setIgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className="w-full border rounded-md p-2"
+                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                   placeholder="e.g., 18"
+                  readOnly={taxEnabled}
+                  disabled={taxEnabled}
                 />
               </div>
               <div className="flex gap-2">
@@ -1357,6 +1518,7 @@ const PurchaseOrderForm = () => {
                   type="button"
                   onClick={() => calculateTax()}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold"
+                  disabled={!taxEnabled}
                 >
                   Calculate Tax
                 </button>
@@ -1364,6 +1526,7 @@ const PurchaseOrderForm = () => {
                   type="button"
                   onClick={() => { setCgstRate(''); setSgstRate(''); setIgstRate(''); setTaxAmount(0); }}
                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md font-semibold"
+                  disabled={taxEnabled}
                 >
                   Clear
                 </button>
@@ -1379,10 +1542,12 @@ const PurchaseOrderForm = () => {
                   <span>Subtotal:</span>
                   <span className="font-semibold">{formatCurrency(calculateSubtotal())}</span>
                 </div>
-                <div className="flex justify-between items-center text-gray-600">
-                  <span>Tax:</span>
-                  <span className="font-semibold">{formatCurrency(parseFloat(taxAmount) || 0)}</span>
-                </div>
+                {taxEnabled && (
+                  <div className="flex justify-between items-center text-gray-600">
+                    <span>Tax:</span>
+                    <span className="font-semibold">{formatCurrency(parseFloat(taxAmount) || 0)}</span>
+                  </div>
+                )}
                 <div className="pt-2 mt-2 border-t border-gray-200">
                   <div className="flex justify-between items-center text-lg font-bold text-gray-900">
                     <span>Total:</span>

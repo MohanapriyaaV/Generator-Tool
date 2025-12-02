@@ -1,4 +1,5 @@
 import { Invoice } from "../models/invoice_model.js";
+import { getCurrentFinancialYear, extractFinancialYear, extractSequenceNumber } from "../utils/financialYear.js";
 
 // Save a new invoice
 export const createInvoice = async (req, res) => {
@@ -114,6 +115,39 @@ export const deleteInvoice = async (req, res) => {
     res.json({ message: "Invoice deleted successfully" });
   } catch (err) {
     console.error("Error deleting invoice:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get next invoice number
+export const getNextInvoiceNumber = async (req, res) => {
+  try {
+    const financialYear = getCurrentFinancialYear();
+    const prefix = 'INV';
+    
+    // Get all invoices for the current financial year
+    const allInvoices = await Invoice.find();
+    const currentYearNumbers = allInvoices
+      .map(inv => inv.invoiceNumber || inv.fullInvoiceData?.invoiceNumber || '')
+      .filter(num => {
+        const year = extractFinancialYear(num);
+        return year === financialYear && num.startsWith(prefix);
+      });
+    
+    // Extract sequence numbers and find the highest
+    const sequenceNumbers = currentYearNumbers
+      .map(num => extractSequenceNumber(num))
+      .filter(num => num !== null);
+    
+    const maxSequence = sequenceNumbers.length > 0 ? Math.max(...sequenceNumbers) : 0;
+    const nextSequence = maxSequence + 1;
+    const paddedSequence = nextSequence.toString().padStart(4, '0');
+    
+    const invoiceNumber = `${prefix}${financialYear}${paddedSequence}`;
+    
+    res.json({ invoiceNumber });
+  } catch (err) {
+    console.error("Error generating invoice number:", err);
     res.status(500).json({ error: err.message });
   }
 };

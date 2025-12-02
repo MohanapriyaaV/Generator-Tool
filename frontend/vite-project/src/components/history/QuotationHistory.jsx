@@ -8,6 +8,7 @@ const QuotationHistory = () => {
   const [quotations, setQuotations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchQuotations();
@@ -109,6 +110,56 @@ const QuotationHistory = () => {
     navigate('/');
   };
 
+  const normalizeText = (value) => {
+    if (!value && value !== 0) return '';
+    return String(value);
+  };
+
+  const rowMatchesSearch = (quotation) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+
+    const referenceNo = quotation.referenceNo || quotation.fullQuotationData?.quotationDetails?.referenceNo || '';
+    const projectName = quotation.projectName ||
+      quotation.fullQuotationData?.quotationDetails?.projectName ||
+      quotation.quotationDetails?.projectName || '';
+    const vendorData = formatAddressData(quotation.toAddress, quotation.fullQuotationData);
+    const quotationNo = quotation.quotationNo || '';
+    const amountText = normalizeText(quotation.totalAmount);
+
+    const searchable = [
+      projectName,
+      referenceNo,
+      vendorData.name,
+      vendorData.company,
+      vendorData.address,
+      quotationNo,
+      amountText,
+    ].join(' ').toLowerCase();
+
+    return searchable.includes(term);
+  };
+
+  const Highlight = ({ text }) => {
+    if (!searchTerm.trim()) return <>{text}</>;
+
+    const term = searchTerm;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = String(text ?? '').split(regex);
+
+    return (
+      <>
+        {parts.map((part, idx) =>
+          regex.test(part) ? (
+            <span key={idx} className="highlight-match">{part}</span>
+          ) : (
+            <span key={idx}>{part}</span>
+          )
+        )}
+      </>
+    );
+  };
+
   if (loading) {
     return (
       <div className="history-container">
@@ -124,10 +175,20 @@ const QuotationHistory = () => {
     return (
       <div className="history-container">
         <div className="error-message">
-          <h2>Error</h2>
+          <h2>Connection Error</h2>
           <p>{error}</p>
-          <button onClick={fetchQuotations} className="retry-button">Retry</button>
-          <button onClick={handleBack} className="back-button">Back to Dashboard</button>
+          <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: '#fff3cd', borderRadius: '4px', border: '1px solid #ffc107' }}>
+            <strong>💡 Troubleshooting:</strong>
+            <ul style={{ marginTop: '0.5rem', marginLeft: '1.5rem' }}>
+              <li>Make sure the backend server is running</li>
+              <li>Check if the server is running on port 5000</li>
+              <li>Try running: <code style={{ backgroundColor: '#f0f0f0', padding: '2px 4px', borderRadius: '2px' }}>cd backend && npm start</code></li>
+            </ul>
+          </div>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem' }}>
+            <button onClick={fetchQuotations} className="retry-button">Retry</button>
+            <button onClick={handleBack} className="back-button">Back to Dashboard</button>
+          </div>
         </div>
       </div>
     );
@@ -144,6 +205,15 @@ const QuotationHistory = () => {
         </button>
         <h1 className="history-title">Quotation History</h1>
         <div className="history-actions">
+          <div className="history-search-wrapper">
+            <input
+              type="text"
+              className="history-search-input"
+              placeholder="Search by any word (project, vendor, number, amount...)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <button onClick={fetchQuotations} className="refresh-button">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -177,7 +247,7 @@ const QuotationHistory = () => {
                 </tr>
               </thead>
               <tbody>
-                {quotations.map((quotation, index) => {
+                {quotations.filter(rowMatchesSearch).map((quotation, index) => {
                   // Get reference number from direct field or nested in fullQuotationData
                   const referenceNo = quotation.referenceNo || quotation.fullQuotationData?.quotationDetails?.referenceNo || '-';
                   
@@ -194,26 +264,38 @@ const QuotationHistory = () => {
                   return (
                   <tr key={quotation._id}>
                     <td className="serial-number">{index + 1}</td>
-                    <td>{projectName}</td>
-                    <td className="invoice-number">{referenceNo}</td>
+                    <td><Highlight text={projectName} /></td>
+                    <td className="invoice-number"><Highlight text={referenceNo} /></td>
                     <td>
                       <div className="address-cell">
                         {hasNameOrCompany ? (
                           <>
-                            {vendorData.name && <strong>{vendorData.name}</strong>}
+                            {vendorData.name && <strong><Highlight text={vendorData.name} /></strong>}
                             {vendorData.name && vendorData.company && <br />}
-                            {vendorData.company && <strong>{vendorData.company}</strong>}
+                            {vendorData.company && <strong><Highlight text={vendorData.company} /></strong>}
                             {hasAddress && (hasNameOrCompany ? <br /> : '')}
-                            {hasAddress && <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span>}
+                            {hasAddress && (
+                              <span style={{ fontSize: '0.85em', color: '#666' }}>
+                                <Highlight text={vendorData.address} />
+                              </span>
+                            )}
                             {!hasNameOrCompany && !hasAddress && '-'}
                           </>
                         ) : (
-                          hasAddress ? <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span> : '-'
+                          hasAddress ? (
+                            <span style={{ fontSize: '0.85em', color: '#666' }}>
+                              <Highlight text={vendorData.address} />
+                            </span>
+                          ) : '-'
                         )}
                       </div>
                     </td>
-                    <td className="invoice-number">{quotation.quotationNo || '-'}</td>
-                    <td className="amount-cell">{formatAmount(quotation.totalAmount)}</td>
+                    <td className="invoice-number">
+                      <Highlight text={quotation.quotationNo || '-'} />
+                    </td>
+                    <td className="amount-cell">
+                      <Highlight text={formatAmount(quotation.totalAmount)} />
+                    </td>
                     <td className="s3-url-cell">
                       {quotation.s3Url ? (
                         <a 

@@ -1,8 +1,9 @@
-import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 import { QuotationContext } from '../../context/QuotationContext';
-import { getAllQuotations } from '../../services/api.js';
+import { getAllQuotations, getNextQuotationNumber } from '../../services/api.js';
+import { getCurrentFinancialYear, extractFinancialYear, extractSequenceNumber, buildDocumentNumber } from '../../utils/financialYear.js';
 
 const QuotationForm = () => {
   const {
@@ -18,6 +19,8 @@ const QuotationForm = () => {
     setQuotationItems,
     globalTaxes,
     setGlobalTaxes,
+    taxEnabled,
+    setTaxEnabled,
   } = useContext(QuotationContext);
 
   const navigate = useNavigate();
@@ -29,6 +32,15 @@ const QuotationForm = () => {
     "Delivery period provided is from the date of receipt of the PO.",
     "Assumptions and other details are attached in the technical proposal."
   ]);
+  
+  // Quotation number state
+  const [sequenceDigits, setSequenceDigits] = useState('1');
+  const [quotationError, setQuotationError] = useState('');
+  const [generatedSequence, setGeneratedSequence] = useState(null);
+  
+  // Ref to track if we're initializing to prevent circular updates
+  const isInitializing = useRef(true);
+  const isUpdatingFromSequence = useRef(false);
 
   // Get all countries - memoized to prevent recreation
   const allCountries = useMemo(() => Country.getAllCountries(), []);
@@ -340,15 +352,56 @@ const QuotationForm = () => {
 
   useEffect(() => {
     const initializeQuotation = async () => {
+      // Skip if we're updating from sequence digits change (to prevent loop)
+      if (isUpdatingFromSequence.current) {
+        isUpdatingFromSequence.current = false;
+        return;
+      }
+      
       const today = new Date();
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
       
       // Generate quotation number if not exists
+      // Check if quotation number already exists and is valid
+      if (quotationDetails?.quotationNo && quotationDetails.quotationNo.trim() !== '') {
+        // Extract sequence if it exists
+        const seq = extractSequenceNumber(quotationDetails.quotationNo);
+        if (seq !== null) {
+          // Only update if sequenceDigits is not already set to this value to prevent loops
+          const currentSeq = parseInt(sequenceDigits, 10);
+          if (isNaN(currentSeq) || currentSeq !== seq) {
+            isInitializing.current = true;
+            setSequenceDigits(seq.toString()); // No padding - show raw number
+            setGeneratedSequence(seq);
+            isInitializing.current = false;
+          }
+        }
+        // Quotation number already exists, don't regenerate
+        return;
+      }
+      
+      // Only generate if quotation number doesn't exist
       if (!quotationDetails?.quotationNo) {
-        const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-        const newQuotationNo = `QT${year}${month}${randomNum}`;
-        setQuotationDetails(prev => ({ ...prev, quotationNo: newQuotationNo }));
+        try {
+          isInitializing.current = true;
+          const newQuotationNo = await getNextQuotationNumber();
+          setQuotationDetails(prev => ({ ...prev, quotationNo: newQuotationNo }));
+          const seq = extractSequenceNumber(newQuotationNo);
+          if (seq !== null) {
+            setSequenceDigits(seq.toString()); // No padding - show raw number
+            setGeneratedSequence(seq);
+          }
+          isInitializing.current = false;
+        } catch (error) {
+          console.error('Error generating quotation number:', error);
+          // Fallback: generate with current financial year
+          isInitializing.current = true;
+          const financialYear = getCurrentFinancialYear();
+          const fallbackNo = buildDocumentNumber('QT', financialYear, 1);
+          setQuotationDetails(prev => ({ ...prev, quotationNo: fallbackNo }));
+          setSequenceDigits('1'); // No padding - show raw number
+          setGeneratedSequence(1);
+          isInitializing.current = false;
+        }
       }
       
       // Generate reference number if not exists
@@ -362,10 +415,40 @@ const QuotationForm = () => {
         setQuotationDetails(prev => ({ ...prev, issueDate: today.toISOString().split('T')[0] }));
       }
     };
-    
+
     initializeQuotation();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [quotationDetails?.quotationNo]);
+
+  // Update full quotation number when sequence digits change
+  // Only update if sequenceDigits is a valid number and would result in a different quotation number
+  useEffect(() => {
+    // Skip if we're still initializing or if quotationNo doesn't exist yet
+    if (isInitializing.current || !quotationDetails?.quotationNo) {
+      return;
+    }
+    
+    if (sequenceDigits && sequenceDigits.trim() !== '') {
+      const seq = parseInt(sequenceDigits, 10);
+      if (!isNaN(seq) && seq > 0) {
+        const financialYear = extractFinancialYear(quotationDetails.quotationNo) || getCurrentFinancialYear();
+        // Use padded digits only for building the full number format
+        const paddedDigits = sequenceDigits.padStart(4, '0');
+        const newFullNumber = buildDocumentNumber('QT', financialYear, paddedDigits);
+        
+        // Extract current sequence from quotationNo to compare
+        const currentSeq = extractSequenceNumber(quotationDetails.quotationNo);
+        
+        // Only update if the new number is actually different AND the sequence actually changed
+        // This prevents infinite loops when the number is already correct
+        if (newFullNumber !== quotationDetails.quotationNo && currentSeq !== seq) {
+          isUpdatingFromSequence.current = true;
+          setQuotationDetails(prev => ({ ...prev, quotationNo: newFullNumber }));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequenceDigits]);
 
   const handleAddItem = () => {
     setQuotationItems([...quotationItems, { name: '', qty: 1, rate: 0, hsn: '', amount: 0 }]);
@@ -474,11 +557,76 @@ const QuotationForm = () => {
     setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
   };
 
+  // Check if Quotation From and Quotation For are in the same state
+  const isSameState = () => {
+    const fromState = quotationFrom.stateCode;
+    const forState = quotationFor.stateCode;
+    
+    // Get GSTIN state codes as fallback
+    let fromGSTINState = null;
+    let forGSTINState = null;
+    
+    if (quotationFrom.gstin && quotationFrom.gstin.length >= 2) {
+      fromGSTINState = quotationFrom.gstin.substring(0, 2);
+    }
+    
+    if (quotationFor.gstin && quotationFor.gstin.length >= 2) {
+      forGSTINState = quotationFor.gstin.substring(0, 2);
+    }
+    
+    // Priority 1: Compare using state codes if both are available
+    if (fromState && forState) {
+      return fromState === forState;
+    }
+    
+    // Priority 2: Compare using GSTIN state codes if both GSTINs are available
+    if (fromGSTINState && forGSTINState) {
+      return fromGSTINState === forGSTINState;
+    }
+    
+    // If we can't determine, default to inter-state (IGST)
+    return false;
+  };
+
+  // Auto-calculate tax based on same/different states
+  const calculateAutoTax = () => {
+    const subtotal = quotationItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    
+    if (!taxEnabled) {
+      return { cgst: 0, sgst: 0, igst: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
+    }
+    
+    const sameState = isSameState();
+    
+    if (sameState) {
+      // Intra-state: CGST 9% + SGST 9%
+      const cgst = (subtotal * 9) / 100;
+      const sgst = (subtotal * 9) / 100;
+      return { cgst: 9, sgst: 9, igst: 0, cgstAmount: cgst, sgstAmount: sgst, igstAmount: 0, totalTax: cgst + sgst };
+    } else {
+      // Inter-state: IGST 18%
+      const igst = (subtotal * 18) / 100;
+      return { cgst: 0, sgst: 0, igst: 18, cgstAmount: 0, sgstAmount: 0, igstAmount: igst, totalTax: igst };
+    }
+  };
+
+  // Auto-update tax when addresses change
+  useEffect(() => {
+    if (taxEnabled) {
+      const autoTax = calculateAutoTax();
+      setGlobalTaxes({ cgst: autoTax.cgst, sgst: autoTax.sgst, igst: autoTax.igst });
+    } else {
+      setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotationFrom.stateCode, quotationFor.stateCode, quotationFrom.gstin, quotationFor.gstin, taxEnabled, quotationItems]);
+
   const subtotal = quotationItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  const cgstAmount = subtotal * (Number(globalTaxes?.cgst || 0)) / 100;
-  const sgstAmount = subtotal * (Number(globalTaxes?.sgst || 0)) / 100;
-  const igstAmount = subtotal * (Number(globalTaxes?.igst || 0)) / 100;
-  const totalTax = cgstAmount + sgstAmount + igstAmount;
+  const autoTax = calculateAutoTax();
+  const cgstAmount = autoTax.cgstAmount;
+  const sgstAmount = autoTax.sgstAmount;
+  const igstAmount = autoTax.igstAmount;
+  const totalTax = autoTax.totalTax;
   const grandTotal = subtotal + totalTax;
 
   return (
@@ -533,8 +681,94 @@ const QuotationForm = () => {
       </button>
     </div>
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+      {/* Quotation Number */}
+      <div>
+        <label className="block text-sm font-medium text-gray-600 mb-1">
+          Quotation Number <span className="text-red-500">*</span>
+        </label>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 border rounded-md p-2 bg-gray-50 text-gray-700">
+            {quotationDetails?.quotationNo ? (() => {
+              const financialYear = extractFinancialYear(quotationDetails.quotationNo) || getCurrentFinancialYear();
+              return `QT${financialYear}`;
+            })() : 'QT'}
+          </div>
+          <input
+            type="text"
+            value={sequenceDigits}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+              // Allow user to edit freely - no padding, no constraints during typing
+              setSequenceDigits(value);
+              setQuotationError('');
+            }}
+            onBlur={async () => {
+              // Validate only when user finishes editing
+              if (sequenceDigits && sequenceDigits.trim() !== '') {
+                const seq = parseInt(sequenceDigits, 10);
+                if (isNaN(seq) || seq < 1 || seq > 9999) {
+                  setQuotationError('Sequence must be between 1 and 9999');
+                  return;
+                }
+
+                // Check uniqueness only
+                try {
+                  const allQuotations = await getAllQuotations();
+                  const financialYear = extractFinancialYear(quotationDetails?.quotationNo) || getCurrentFinancialYear();
+                  // Use padded digits for building the full number format
+                  const paddedDigits = sequenceDigits.padStart(4, '0');
+                  const checkNumber = buildDocumentNumber('QT', financialYear, paddedDigits);
+                  
+                  console.log('🔍 [Quotation] Checking uniqueness for:', checkNumber);
+                  
+                  // Get current quotation ID if editing (to exclude it from uniqueness check)
+                  // Check if we have the current quotation in context
+                  const currentQuotationId = quotationDetails?._id;
+                  const currentQuotationNo = quotationDetails?.quotationNo;
+                  
+                  const existing = allQuotations.find(q => {
+                    // Skip the current quotation if editing (by ID or by number)
+                    if (currentQuotationId && q._id === currentQuotationId) {
+                      return false;
+                    }
+                    if (currentQuotationNo) {
+                      const qNo = q.quotationNo || q.fullQuotationData?.quotationNo || '';
+                      if (qNo === currentQuotationNo && qNo === checkNumber) {
+                        return false; // Same quotation being edited
+                      }
+                    }
+                    const qNo = q.quotationNo || q.fullQuotationData?.quotationNo || '';
+                    return qNo === checkNumber;
+                  });
+
+                  if (existing) {
+                    console.log('❌ [Quotation] Duplicate found:', existing);
+                    setQuotationError('This quotation number already exists. Please use a different number.');
+                    return;
+                  }
+                  
+                  console.log('✅ [Quotation] Number is unique');
+                  
+                  setQuotationError('');
+                } catch (error) {
+                  console.error('Error checking quotation number uniqueness:', error);
+                  setQuotationError('Could not verify quotation number uniqueness. Please check manually.');
+                }
+              } else {
+                setQuotationError('Sequence number is required');
+              }
+            }}
+            maxLength={4}
+            className="w-20 border rounded-md p-2 text-center"
+            placeholder="1"
+          />
+        </div>
+        {quotationError && (
+          <div className="text-xs text-red-500 mt-1">{quotationError}</div>
+        )}
+      </div>
       {/* Project Name */}
-      <div className="sm:col-span-2">
+      <div>
         <label className="block text-sm font-medium text-gray-600 mb-1">
           Project Name <span className="text-red-500">*</span>
         </label>
@@ -1057,36 +1291,57 @@ const QuotationForm = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Tax Inputs */}
               <div>
-                <h3 className="text-lg font-semibold mb-4 text-gray-800">Tax Details</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Tax Details</h3>
+                  <button
+                    type="button"
+                    onClick={() => setTaxEnabled(!taxEnabled)}
+                    className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                      taxEnabled
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-400 text-white hover:bg-gray-500'
+                    }`}
+                  >
+                    {taxEnabled ? 'Disable Tax' : 'Enable Tax'}
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">CGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2" 
-                      value={globalTaxes?.cgst || ''} 
-                      onChange={e => setGlobalTaxes(prev => ({ ...prev, cgst: e.target.value }))} 
+                      className="w-full border rounded-md p-2 bg-gray-50" 
+                      value={taxEnabled ? (autoTax.cgst || '') : ''} 
+                      readOnly
+                      disabled={!taxEnabled}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">SGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2" 
-                      value={globalTaxes?.sgst || ''} 
-                      onChange={e => setGlobalTaxes(prev => ({ ...prev, sgst: e.target.value }))} 
+                      className="w-full border rounded-md p-2 bg-gray-50" 
+                      value={taxEnabled ? (autoTax.sgst || '') : ''} 
+                      readOnly
+                      disabled={!taxEnabled}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">IGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2" 
-                      value={globalTaxes?.igst || ''} 
-                      onChange={e => setGlobalTaxes(prev => ({ ...prev, igst: e.target.value }))} 
+                      className="w-full border rounded-md p-2 bg-gray-50" 
+                      value={taxEnabled ? (autoTax.igst || '') : ''} 
+                      readOnly
+                      disabled={!taxEnabled}
                     />
                   </div>
                 </div>
+                {taxEnabled && (
+                  <div className="mt-2 text-xs text-gray-600">
+                    {isSameState() ? 'Same State: CGST 9% + SGST 9%' : 'Different States: IGST 18%'}
+                  </div>
+                )}
               </div>
 
               {/* Totals Summary */}
@@ -1096,33 +1351,35 @@ const QuotationForm = () => {
                     <span>Subtotal:</span>
                     <span>₹{subtotal.toFixed(2)}</span>
                   </div>
-                  {cgstAmount > 0 && (
+                  {taxEnabled && cgstAmount > 0 && (
                     <div className="flex justify-between items-center text-sm">
-                      <span>CGST ({globalTaxes?.cgst}%):</span>
+                      <span>CGST ({autoTax.cgst}%):</span>
                       <span>₹{cgstAmount.toFixed(2)}</span>
                     </div>
                   )}
-                  {sgstAmount > 0 && (
+                  {taxEnabled && sgstAmount > 0 && (
                     <div className="flex justify-between items-center text-sm">
-                      <span>SGST ({globalTaxes?.sgst}%):</span>
+                      <span>SGST ({autoTax.sgst}%):</span>
                       <span>₹{sgstAmount.toFixed(2)}</span>
                     </div>
                   )}
-                  {igstAmount > 0 && (
+                  {taxEnabled && igstAmount > 0 && (
                     <div className="flex justify-between items-center text-sm">
-                      <span>IGST ({globalTaxes?.igst}%):</span>
+                      <span>IGST ({autoTax.igst}%):</span>
                       <span>₹{igstAmount.toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="pt-2 mt-2 border-t border-gray-200">
-                    <div className="flex justify-between items-center text-gray-600">
-                      <span>Tax Amount:</span>
-                      <span>₹{totalTax.toFixed(2)}</span>
+                  {taxEnabled && (
+                    <div className="pt-2 mt-2 border-t border-gray-200">
+                      <div className="flex justify-between items-center text-gray-600">
+                        <span>Tax Amount:</span>
+                        <span>₹{totalTax.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center text-lg font-bold text-sky-900 mt-2 pt-2 border-t border-gray-200">
-                      <span>Total:</span>
-                      <span>₹{grandTotal.toFixed(2)}</span>
-                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-lg font-bold text-sky-900 mt-2 pt-2 border-t border-gray-200">
+                    <span>Total:</span>
+                    <span>₹{grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>

@@ -377,11 +377,6 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
       {/* Header with Logo and Company Name */}
       <div className="invoice-header">
         <div className="invoice-logo">
-          {data.projectName && (
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#333', marginBottom: '8px' }}>
-              Project: {data.projectName}
-            </div>
-          )}
           {(() => {
             // Try to get logo from data first, then fallback to base64 logo, then public logo
             const logoSource = data.logo || LOGO_BASE64_DATA || '/logo.jpg';
@@ -600,7 +595,7 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
             <td></td>
             <td className="text-right bold-cell">{formatCurrency(data.calculations?.subtotal || 0)}</td>
           </tr>
-          {(() => {
+          {data.taxEnabled !== false && (() => {
             const gstType = data.calculations?.gstType;
             const isIntraState = gstType === 'intra-state';
             
@@ -671,7 +666,8 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
         </tbody>
       </table>
       
-      {/* Tax Summary Table */}
+      {/* Tax Summary Table - Only show if tax is enabled */}
+      {data.taxEnabled !== false && (
       <table className="tax-summary-table">
         <thead>
           <tr>
@@ -784,7 +780,7 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
           <tr className="tax-total-row">
             <td className="col-hsn bold-cell">Total</td>
             <td className="col-taxable-value text-right bold-cell">{formatCurrency(data.calculations?.subtotal || 0)}</td>
-            {(() => {
+            {data.taxEnabled !== false && (() => {
               const isIntraState = data.calculations?.gstType === 'intra-state';
               if (isIntraState) {
                 return (
@@ -796,7 +792,7 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
                     <td className="col-total-tax text-right bold-cell">{formatCurrency(data.calculations?.totalTax || 0)}</td>
                   </>
                 );
-              } else {
+              } else if (data.calculations?.gstType === 'inter-state') {
                 return (
                   <>
                     <td className="col-igst-rate"></td>
@@ -805,22 +801,26 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
                   </>
                 );
               }
+              return null;
             })()}
           </tr>
-          <tr className="tax-words-row">
-            {(() => {
-              const isIntraState = data.calculations?.gstType === 'intra-state';
-              const colSpan = isIntraState ? 7 : 5;
-              return (
-                <td colSpan={colSpan} style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '11px', lineHeight: '1.4' }}>
-                  <span className="tax-label">Tax Amount (in words):</span>
-                  <span className="tax-value bold-cell"> {numberToWords(data.calculations?.totalTax || 0)}</span>
-                </td>
-              );
-            })()}
-          </tr>
+          {data.taxEnabled !== false && (
+            <tr className="tax-words-row">
+              {(() => {
+                const isIntraState = data.calculations?.gstType === 'intra-state';
+                const colSpan = isIntraState ? 7 : 5;
+                return (
+                  <td colSpan={colSpan} style={{ border: '1px solid #000', padding: '4px 6px', textAlign: 'left', fontSize: '11px', lineHeight: '1.4' }}>
+                    <span className="tax-label">Tax Amount (in words):</span>
+                    <span className="tax-value bold-cell"> {numberToWords(data.calculations?.totalTax || 0)}</span>
+                  </td>
+                );
+              })()}
+            </tr>
+          )}
         </tbody>
       </table>
+      )}
       {/* Bank Details from form data */}
       {(() => {
         // Use bank details from form data if available, otherwise fallback to auto-generated

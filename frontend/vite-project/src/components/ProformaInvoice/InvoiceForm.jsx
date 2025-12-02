@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
-import { getQuotationByReferenceNo, getAllProformaInvoices } from '../../services/api.js';
+import { getQuotationByReferenceNo, getAllProformaInvoices, getNextProformaInvoiceNumber } from '../../services/api.js';
+import { getCurrentFinancialYear, extractFinancialYear, extractSequenceNumber, buildDocumentNumber } from '../../utils/financialYear.js';
 import './InvoiceForm.css';
 
 // Auto-resize textarea component
@@ -355,11 +357,16 @@ const AddressSection = React.memo(({ prefix, title, subTitle, showLocationSelect
 AddressSection.displayName = 'AddressSection';
 
 const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
+  const location = useLocation();
   const [items, setItems] = useState([{ id: 1, description: '', hsn: '', quantity: '', rate: '' }]);
   const [errors, setErrors] = useState({});
   const [selectedLocation, setSelectedLocation] = useState('');
   const [referenceNoError, setReferenceNoError] = useState('');
   const [isLoadingQuotation, setIsLoadingQuotation] = useState(false);
+  const [sequenceDigits, setSequenceDigits] = useState('1');
+  const [invoiceNumberError, setInvoiceNumberError] = useState('');
+  const [generatedSequence, setGeneratedSequence] = useState(null);
+  const [taxEnabled, setTaxEnabled] = useState(true);
   const [bankDetails, setBankDetails] = useState({
     bankName: '',
     accountNo: '',
@@ -986,66 +993,70 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
   };
 
   // Generate unique invoice number on component mount (if not editing)
+  // This effect depends on initialData and location.state to ensure it doesn't run before initialData is loaded
   useEffect(() => {
+    // Check if we're editing - check both initialData prop and location.state
+    const editingData = initialData || location.state?.initialData;
+    
     // Skip if editing existing invoice
-    if (initialData) {
+    if (editingData) {
+      // If editingData exists, ensure we preserve the invoice number
+      if (editingData.invoiceNumber) {
+        const seq = extractSequenceNumber(editingData.invoiceNumber);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString()); // No padding - show raw number
+          setGeneratedSequence(seq);
+        }
+      }
+      return;
+    }
+    
+    // Also check if formData already has an invoice number (from previous state)
+    if (formData.invoiceNumber && formData.invoiceNumber.trim() !== '') {
+      const seq = extractSequenceNumber(formData.invoiceNumber);
+      if (seq !== null) {
+        setSequenceDigits(seq.toString()); // No padding - show raw number
+        setGeneratedSequence(seq);
+      }
       return;
     }
 
     const generateInvoiceNumber = async () => {
       try {
         console.log('🔄 [InvoiceForm] Starting invoice number generation...');
-        const invoices = await getAllProformaInvoices();
-        console.log('📋 [InvoiceForm] Fetched', invoices.length, 'existing invoices');
+        const newNumber = await getNextProformaInvoiceNumber();
+        console.log('✅ [InvoiceForm] Generated invoice number:', newNumber);
         
-        const existingNumbers = invoices
-          .map(inv => inv.invoiceNumber || inv.fullInvoiceData?.invoiceNumber)
-          .filter(num => num && typeof num === 'string' && num.startsWith('PI'));
+        const seq = extractSequenceNumber(newNumber);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString()); // No padding - show raw number
+          setGeneratedSequence(seq);
+        }
         
-        console.log('📊 [InvoiceForm] Existing invoice numbers:', existingNumbers);
-        
-        let newNumber;
-        let isUnique = false;
-        let counter = 1;
-        
-        while (!isUnique && counter < 10000) {
-          // Generate PI followed by at least 4 digits
-          const paddedCounter = counter.toString().padStart(4, '0');
-          newNumber = `PI${paddedCounter}`;
+        setFormData(prev => {
+          const currentNumber = prev.invoiceNumber;
+          console.log('📝 [InvoiceForm] Current invoice number in state:', currentNumber);
           
-          if (!existingNumbers.includes(newNumber)) {
-            isUnique = true;
-          } else {
-            counter++;
+          // Only update if invoice number is still empty
+          if (!currentNumber || currentNumber.trim() === '') {
+            console.log('✏️ [InvoiceForm] Updating state with invoice number:', newNumber);
+            return {
+              ...prev,
+              invoiceNumber: newNumber
+            };
           }
-        }
-        
-        if (newNumber) {
-          console.log('✅ [InvoiceForm] Generated invoice number:', newNumber);
-          setFormData(prev => {
-            const currentNumber = prev.invoiceNumber;
-            console.log('📝 [InvoiceForm] Current invoice number in state:', currentNumber);
-            
-            // Only update if invoice number is still empty
-            if (!currentNumber || currentNumber.trim() === '') {
-              console.log('✏️ [InvoiceForm] Updating state with invoice number:', newNumber);
-              return {
-                ...prev,
-                invoiceNumber: newNumber
-              };
-            }
-            console.log('⏭️ [InvoiceForm] Invoice number already set, skipping update');
-            return prev;
-          });
-        } else {
-          console.error('❌ [InvoiceForm] Failed to generate unique invoice number');
-        }
+          console.log('⏭️ [InvoiceForm] Invoice number already set, skipping update');
+          return prev;
+        });
       } catch (error) {
         console.error('❌ [InvoiceForm] Error generating invoice number:', error);
-        // Fallback to a timestamp-based number if API fails
-        const timestamp = Date.now();
-        const fallbackNumber = `PI${timestamp.toString().slice(-4)}`;
+        // Fallback: generate with current financial year
+        const financialYear = getCurrentFinancialYear();
+        const fallbackNumber = buildDocumentNumber('PI', financialYear, 1);
         console.log('🔄 [InvoiceForm] Using fallback invoice number:', fallbackNumber);
+        
+        setSequenceDigits('1'); // No padding - show raw number
+        setGeneratedSequence(1);
         
         setFormData(prev => {
           if (!prev.invoiceNumber || prev.invoiceNumber.trim() === '') {
@@ -1059,80 +1070,174 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
       }
     };
 
-    // Generate invoice number
-    generateInvoiceNumber();
+    // Generate invoice number only if we're not editing (check again at the end)
+    if (!editingData) {
+      generateInvoiceNumber();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [initialData, location.state?.initialData]);
+
+  // Update full invoice number when sequence digits change
+  // Only update if sequenceDigits is a valid number (not empty)
+  useEffect(() => {
+    if (formData.invoiceNumber && sequenceDigits && sequenceDigits.trim() !== '') {
+      const seq = parseInt(sequenceDigits, 10);
+      if (!isNaN(seq) && seq > 0) {
+        const financialYear = extractFinancialYear(formData.invoiceNumber) || getCurrentFinancialYear();
+        // Use padded digits only for building the full number format, but keep user input as-is
+        const paddedDigits = sequenceDigits.padStart(4, '0');
+        const newFullNumber = buildDocumentNumber('PI', financialYear, paddedDigits);
+        if (newFullNumber !== formData.invoiceNumber) {
+          setFormData(prev => ({ ...prev, invoiceNumber: newFullNumber }));
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sequenceDigits]);
+
+  // Validate invoice number
+  const validateInvoiceNumber = async () => {
+    const seq = parseInt(sequenceDigits, 10);
+    if (isNaN(seq) || seq < 1 || seq > 9999) {
+      setInvoiceNumberError('Sequence must be between 1 and 9999');
+      return false;
+    }
+
+    // Check uniqueness only
+    try {
+      const allInvoices = await getAllProformaInvoices();
+      const financialYear = extractFinancialYear(formData.invoiceNumber) || getCurrentFinancialYear();
+      // Use padded digits for building the full number format
+      const paddedDigits = sequenceDigits.padStart(4, '0');
+      const checkNumber = buildDocumentNumber('PI', financialYear, paddedDigits);
+      
+      console.log('🔍 [ProformaInvoice] Checking uniqueness for:', checkNumber);
+      
+      // Get current invoice ID if editing (to exclude it from uniqueness check)
+      const currentInvoiceId = initialData?._id || location.state?.initialData?._id;
+      
+      const existing = allInvoices.find(inv => {
+        // Skip the current invoice if editing
+        if (currentInvoiceId && inv._id === currentInvoiceId) {
+          return false;
+        }
+        const invNo = inv.invoiceNumber || inv.fullInvoiceData?.invoiceNumber || '';
+        return invNo === checkNumber;
+      });
+
+      if (existing) {
+        console.log('❌ [ProformaInvoice] Duplicate found:', existing);
+        setInvoiceNumberError('This invoice number already exists. Please use a different number.');
+        return false;
+      }
+      
+      console.log('✅ [ProformaInvoice] Number is unique');
+    } catch (error) {
+      console.error('Error checking invoice number uniqueness:', error);
+      setInvoiceNumberError('Could not verify invoice number uniqueness. Please check manually.');
+      return false;
+    }
+
+    setInvoiceNumberError('');
+    return true;
+  };
+
+  const handleSequenceChange = (e) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    // Allow user to edit freely - no padding, no constraints during typing
+    setSequenceDigits(value);
+    setInvoiceNumberError('');
+  };
+
+  const handleSequenceBlur = async () => {
+    // Validate only when user finishes editing
+    if (sequenceDigits && sequenceDigits.trim() !== '') {
+      await validateInvoiceNumber();
+    } else {
+      setInvoiceNumberError('Sequence number is required');
+    }
+  };
 
   // Load initial data when provided (for editing)
+  // Check both initialData prop and location.state
   useEffect(() => {
-    if (initialData) {
-      // Populate form data from initialData
+    const editingData = initialData || location.state?.initialData;
+    if (editingData) {
+      // Populate form data from editingData
       const newFormData = {
         // Invoice From fields
-        invoiceFromCompanyName: initialData.invoiceFromCompanyName || '',
-        invoiceFromStreet: initialData.invoiceFromStreet || '',
-        invoiceFromApartment: initialData.invoiceFromApartment || '',
-        invoiceFromZipCode: initialData.invoiceFromZipCode || '',
-        invoiceFromCountryCode: initialData.invoiceFromCountryCode || '',
-        invoiceFromStateCode: initialData.invoiceFromStateCode || '',
-        invoiceFromCity: initialData.invoiceFromCity || '',
-        invoiceFromPAN: initialData.invoiceFromPAN || '',
-        invoiceFromGSTIN: initialData.invoiceFromGSTIN || '',
+        invoiceFromCompanyName: editingData.invoiceFromCompanyName || '',
+        invoiceFromStreet: editingData.invoiceFromStreet || '',
+        invoiceFromApartment: editingData.invoiceFromApartment || '',
+        invoiceFromZipCode: editingData.invoiceFromZipCode || '',
+        invoiceFromCountryCode: editingData.invoiceFromCountryCode || '',
+        invoiceFromStateCode: editingData.invoiceFromStateCode || '',
+        invoiceFromCity: editingData.invoiceFromCity || '',
+        invoiceFromPAN: editingData.invoiceFromPAN || '',
+        invoiceFromGSTIN: editingData.invoiceFromGSTIN || '',
         // Bill To fields
-        billToClientName: initialData.billToClientName || '',
-        billToCompanyName: initialData.billToCompanyName || '',
-        billToStreet: initialData.billToStreet || '',
-        billToApartment: initialData.billToApartment || '',
-        billToZipCode: initialData.billToZipCode || '',
-        billToCountryCode: initialData.billToCountryCode || '',
-        billToStateCode: initialData.billToStateCode || '',
-        billToCity: initialData.billToCity || '',
-        billToPAN: initialData.billToPAN || '',
-        billToGSTIN: initialData.billToGSTIN || '',
-        billToPhoneNumber: initialData.billToPhoneNumber || '',
+        billToClientName: editingData.billToClientName || '',
+        billToCompanyName: editingData.billToCompanyName || '',
+        billToStreet: editingData.billToStreet || '',
+        billToApartment: editingData.billToApartment || '',
+        billToZipCode: editingData.billToZipCode || '',
+        billToCountryCode: editingData.billToCountryCode || '',
+        billToStateCode: editingData.billToStateCode || '',
+        billToCity: editingData.billToCity || '',
+        billToPAN: editingData.billToPAN || '',
+        billToGSTIN: editingData.billToGSTIN || '',
+        billToPhoneNumber: editingData.billToPhoneNumber || '',
         // Ship To fields
-        shipToClientName: initialData.shipToClientName || '',
-        shipToCompanyName: initialData.shipToCompanyName || '',
-        shipToStreet: initialData.shipToStreet || '',
-        shipToApartment: initialData.shipToApartment || '',
-        shipToZipCode: initialData.shipToZipCode || '',
-        shipToCountryCode: initialData.shipToCountryCode || '',
-        shipToStateCode: initialData.shipToStateCode || '',
-        shipToCity: initialData.shipToCity || '',
-        shipToPAN: initialData.shipToPAN || '',
-        shipToGSTIN: initialData.shipToGSTIN || '',
-        shipToPhoneNumber: initialData.shipToPhoneNumber || '',
+        shipToClientName: editingData.shipToClientName || '',
+        shipToCompanyName: editingData.shipToCompanyName || '',
+        shipToStreet: editingData.shipToStreet || '',
+        shipToApartment: editingData.shipToApartment || '',
+        shipToZipCode: editingData.shipToZipCode || '',
+        shipToCountryCode: editingData.shipToCountryCode || '',
+        shipToStateCode: editingData.shipToStateCode || '',
+        shipToCity: editingData.shipToCity || '',
+        shipToPAN: editingData.shipToPAN || '',
+        shipToGSTIN: editingData.shipToGSTIN || '',
+        shipToPhoneNumber: editingData.shipToPhoneNumber || '',
         // Invoice details fields
-        invoiceNumber: initialData.invoiceNumber || '',
-        invoiceDate: initialData.invoiceDate ? (typeof initialData.invoiceDate === 'string' ? initialData.invoiceDate.split('T')[0] : new Date(initialData.invoiceDate).toISOString().split('T')[0]) : '',
-        deliveryNote: initialData.deliveryNote || '',
-        paymentTerms: initialData.paymentTerms || '',
-        referenceNo: initialData.referenceNo || '',
-        otherReferences: initialData.otherReferences || '',
-        buyersOrderNo: initialData.buyersOrderNo || '',
-        buyersOrderDate: initialData.buyersOrderDate ? (typeof initialData.buyersOrderDate === 'string' ? initialData.buyersOrderDate.split('T')[0] : new Date(initialData.buyersOrderDate).toISOString().split('T')[0]) : '',
-        dispatchDocNo: initialData.dispatchDocNo || '',
-        deliveryNoteDate: initialData.deliveryNoteDate ? (typeof initialData.deliveryNoteDate === 'string' ? initialData.deliveryNoteDate.split('T')[0] : new Date(initialData.deliveryNoteDate).toISOString().split('T')[0]) : '',
-        dispatchedThrough: initialData.dispatchedThrough || '',
-        destination: initialData.destination || '',
-        termsOfDelivery: initialData.termsOfDelivery || '',
-        quotationReferenceNo: initialData.quotationReferenceNo || '',
-        projectName: initialData.projectName || ''
+        invoiceNumber: editingData.invoiceNumber || '',
+        invoiceDate: editingData.invoiceDate ? (typeof editingData.invoiceDate === 'string' ? editingData.invoiceDate.split('T')[0] : new Date(editingData.invoiceDate).toISOString().split('T')[0]) : '',
+        deliveryNote: editingData.deliveryNote || '',
+        paymentTerms: editingData.paymentTerms || '',
+        referenceNo: editingData.referenceNo || '',
+        otherReferences: editingData.otherReferences || '',
+        buyersOrderNo: editingData.buyersOrderNo || '',
+        buyersOrderDate: editingData.buyersOrderDate ? (typeof editingData.buyersOrderDate === 'string' ? editingData.buyersOrderDate.split('T')[0] : new Date(editingData.buyersOrderDate).toISOString().split('T')[0]) : '',
+        dispatchDocNo: editingData.dispatchDocNo || '',
+        deliveryNoteDate: editingData.deliveryNoteDate ? (typeof editingData.deliveryNoteDate === 'string' ? editingData.deliveryNoteDate.split('T')[0] : new Date(editingData.deliveryNoteDate).toISOString().split('T')[0]) : '',
+        dispatchedThrough: editingData.dispatchedThrough || '',
+        destination: editingData.destination || '',
+        termsOfDelivery: editingData.termsOfDelivery || '',
+        quotationReferenceNo: editingData.quotationReferenceNo || '',
+        projectName: editingData.projectName || ''
       };
       
       setFormData(newFormData);
       
-      // Load bank details from initialData if available
-      if (initialData.bankDetails) {
-        setBankDetails(initialData.bankDetails);
-      } else if (initialData.fullInvoiceData?.bankDetails) {
-        setBankDetails(initialData.fullInvoiceData.bankDetails);
+      // Extract sequence digits from invoice number if available
+      if (editingData.invoiceNumber) {
+        const seq = extractSequenceNumber(editingData.invoiceNumber);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString()); // No padding - show raw number
+          setGeneratedSequence(seq);
+        }
+      }
+      
+      // Load bank details from editingData if available
+      if (editingData.bankDetails) {
+        setBankDetails(editingData.bankDetails);
+      } else if (editingData.fullInvoiceData?.bankDetails) {
+        setBankDetails(editingData.fullInvoiceData.bankDetails);
       }
       
       // Populate items
-      if (initialData.items && initialData.items.length > 0) {
-        const populatedItems = initialData.items.map((item, index) => ({
+      if (editingData.items && editingData.items.length > 0) {
+        const populatedItems = editingData.items.map((item, index) => ({
           id: index + 1,
           description: item.description || '',
           hsn: item.hsn || '',
@@ -1167,7 +1272,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
       
       setAddressData(newAddressData);
     }
-  }, [initialData]); // Only run when initialData changes
+  }, [initialData, location.state?.initialData]); // Run when initialData or location.state changes
 
   const handleItemChange = (id, field, value) => {
     let newValue = value;
@@ -1206,10 +1311,15 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     return (amount * rate) / 100;
   };
 
-  // Check if Invoice From and Ship To are in the same state
+  // Check if Invoice From and Bill To are in the same state
+  // Note: For GST calculation, we compare supplier (Invoice From) with buyer (Bill To) states
   const isSameState = () => {
     let invoiceFromState = formData.invoiceFromStateCode;
-    let shipToState = formData.shipToStateCode;
+    let billToState = formData.billToStateCode;
+    
+    // Trim whitespace if present
+    if (invoiceFromState) invoiceFromState = invoiceFromState.trim();
+    if (billToState) billToState = billToState.trim();
     
     // Primary method: Use state codes from form
     // Fallback method: Extract state code from GSTIN if state code is missing
@@ -1217,55 +1327,59 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     
     // Get GSTIN state codes as fallback
     let invoiceFromGSTINState = null;
-    let shipToGSTINState = null;
+    let billToGSTINState = null;
     
     if (formData.invoiceFromGSTIN && formData.invoiceFromGSTIN.length >= 2) {
       invoiceFromGSTINState = formData.invoiceFromGSTIN.substring(0, 2);
     }
     
-    if (formData.shipToGSTIN && formData.shipToGSTIN.length >= 2) {
-      shipToGSTINState = formData.shipToGSTIN.substring(0, 2);
+    if (formData.billToGSTIN && formData.billToGSTIN.length >= 2) {
+      billToGSTINState = formData.billToGSTIN.substring(0, 2);
     }
     
     // Priority 1: Compare using state codes if both are available
-    if (invoiceFromState && shipToState) {
-      const sameState = invoiceFromState === shipToState;
+    if (invoiceFromState && billToState && invoiceFromState !== '' && billToState !== '') {
+      const sameState = invoiceFromState === billToState;
       console.log('Comparing state codes (from dropdowns):', {
         invoiceFromState,
-        shipToState,
-        sameState
+        billToState,
+        sameState,
+        formData: {
+          invoiceFromStateCode: formData.invoiceFromStateCode,
+          billToStateCode: formData.billToStateCode
+        }
       });
       return sameState;
     }
     
     // Priority 2: Compare using GSTIN state codes if both GSTINs are available
-    if (invoiceFromGSTINState && shipToGSTINState) {
-      const sameState = invoiceFromGSTINState === shipToGSTINState;
+    if (invoiceFromGSTINState && billToGSTINState) {
+      const sameState = invoiceFromGSTINState === billToGSTINState;
       console.log('Comparing states from GSTIN:', {
         invoiceFromGSTINState,
-        shipToGSTINState,
+        billToGSTINState,
         sameState,
         invoiceFromGSTIN: formData.invoiceFromGSTIN,
-        shipToGSTIN: formData.shipToGSTIN
+        billToGSTIN: formData.billToGSTIN
       });
       return sameState;
     }
     
     // Priority 3: If one has state code and the other has GSTIN, try to match
-    if (invoiceFromState && shipToGSTINState) {
+    if (invoiceFromState && invoiceFromState !== '' && billToGSTINState) {
       // Try to find the state code's numeric equivalent (complex, skip for now)
       console.log('Mixed comparison - state code vs GSTIN:', {
         invoiceFromState,
-        shipToGSTINState,
+        billToGSTINState,
         note: 'Cannot reliably compare, defaulting to inter-state'
       });
       return false;
     }
     
-    if (invoiceFromGSTINState && shipToState) {
+    if (invoiceFromGSTINState && billToState && billToState !== '') {
       console.log('Mixed comparison - GSTIN vs state code:', {
         invoiceFromGSTINState,
-        shipToState,
+        billToState,
         note: 'Cannot reliably compare, defaulting to inter-state'
       });
       return false;
@@ -1274,11 +1388,15 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     // If we can't determine, default to inter-state (IGST)
     console.log('Cannot determine state comparison:', {
       invoiceFromState,
-      shipToState,
+      billToState,
       invoiceFromGSTINState,
-      shipToGSTINState,
+      billToGSTINState,
       invoiceFromGSTIN: formData.invoiceFromGSTIN,
-      shipToGSTIN: formData.shipToGSTIN,
+      billToGSTIN: formData.billToGSTIN,
+      formDataStateCodes: {
+        invoiceFromStateCode: formData.invoiceFromStateCode,
+        billToStateCode: formData.billToStateCode
+      },
       defaulting: 'inter-state (IGST)'
     });
     return false;
@@ -1287,15 +1405,27 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
   // Get GST calculation details
   const getGSTDetails = () => {
     const subtotal = calculateSubtotal();
+    
+    if (!taxEnabled) {
+      return {
+        type: 'no-tax',
+        cgst: null,
+        sgst: null,
+        igst: null,
+        totalTax: 0,
+        total: subtotal
+      };
+    }
+    
     const sameState = isSameState();
     
     console.log('getGSTDetails - Calculation:', {
       subtotal,
       sameState,
       invoiceFromStateCode: formData.invoiceFromStateCode,
-      shipToStateCode: formData.shipToStateCode,
+      billToStateCode: formData.billToStateCode,
       invoiceFromGSTIN: formData.invoiceFromGSTIN,
-      shipToGSTIN: formData.shipToGSTIN,
+      billToGSTIN: formData.billToGSTIN,
       willUseIntraState: sameState
     });
     
@@ -1495,8 +1625,15 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     return parts.join(', ');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate invoice number before submitting
+    const isValid = await validateInvoiceNumber();
+    if (!isValid) {
+      return; // Don't proceed if validation fails
+    }
+    
     const subtotal = calculateSubtotal();
     const gstDetails = getGSTDetails();
     const total = calculateTotal();
@@ -1538,7 +1675,8 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
         amount: calculateItemAmount(item.quantity, item.rate)
       })),
       calculations: calculationsData,
-      bankDetails: bankDetails
+      bankDetails: bankDetails,
+      taxEnabled: taxEnabled
     };
     
     // Debug log to verify data structure - log full details
@@ -1731,15 +1869,26 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                 <label className="block text-sm font-medium text-gray-600 mb-1">
                   Invoice Number <span className="text-red-500">*</span>
                 </label>
-                <input 
-                  name="invoiceNumber" 
-                  value={formData.invoiceNumber} 
-                  onChange={handleChange} 
-                  required 
-                  readOnly
-                  className="w-full border rounded-md p-2 bg-gray-50 cursor-not-allowed"
-                  title="Invoice number is auto-generated"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 border rounded-md p-2 bg-gray-50 text-gray-700">
+                    {formData.invoiceNumber ? (() => {
+                      const financialYear = extractFinancialYear(formData.invoiceNumber) || getCurrentFinancialYear();
+                      return `PI${financialYear}`;
+                    })() : 'PI'}
+                  </div>
+                  <input
+                    type="text"
+                    value={sequenceDigits}
+                    onChange={handleSequenceChange}
+                    onBlur={handleSequenceBlur}
+                    maxLength={4}
+                    className="w-20 border rounded-md p-2 text-center"
+                    placeholder="1"
+                  />
+                </div>
+                {invoiceNumberError && (
+                  <div className="text-xs text-red-500 mt-1">{invoiceNumberError}</div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -1933,6 +2082,17 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Goods Details</h3>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTaxEnabled(!taxEnabled)}
+                  className={`px-4 py-2 rounded-md font-semibold transition-colors ${
+                    taxEnabled
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-400 text-white hover:bg-gray-500'
+                  }`}
+                >
+                  {taxEnabled ? 'Disable Tax' : 'Enable Tax'}
+                </button>
                 <button 
                   type="button" 
                   onClick={addItem} 
@@ -1949,6 +2109,11 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                 </button>
               </div>
             </div>
+            {taxEnabled && (
+              <div className="mb-4 text-sm text-gray-600">
+                {isSameState() ? 'Same State: CGST 9% + SGST 9%' : 'Different States: IGST 18%'}
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead>
@@ -2028,7 +2193,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                   <span>Subtotal:</span>
                   <span className="font-semibold">{formatCurrency(calculateSubtotal())}</span>
                 </div>
-                {(() => {
+                {taxEnabled && (() => {
                   const gstDetails = getGSTDetails();
                   if (gstDetails.type === 'intra-state') {
                     return (
@@ -2043,7 +2208,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                         </div>
                       </>
                     );
-                  } else {
+                  } else if (gstDetails.type === 'inter-state') {
                     return (
                       <div className="flex justify-between items-center text-sm">
                         <span>IGST ({gstDetails.igst.rate}%):</span>
@@ -2051,6 +2216,7 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
                       </div>
                     );
                   }
+                  return null;
                 })()}
                 <div className="pt-2 mt-2 border-t border-gray-200">
                   <div className="flex justify-between items-center text-lg font-bold text-blue-900">
