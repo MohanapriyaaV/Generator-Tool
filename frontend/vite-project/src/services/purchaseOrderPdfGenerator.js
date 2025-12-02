@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 export const generatePurchaseOrderPDF = async (previewRef, fileName = "PO.pdf") => {
   if (!previewRef.current) {
     alert("Preview not ready");
-    return;
+    return null;
   }
 
   const element = previewRef.current;
@@ -55,8 +55,14 @@ export const generatePurchaseOrderPDF = async (previewRef, fileName = "PO.pdf") 
 
   pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
 
+  // Save the PDF
   pdf.save(fileName);
+
+  // Return blob for S3 upload
+  const blob = pdf.output('blob');
 
   // Restore original width
   element.style.width = originalWidth || "100%";
+
+  return blob;
 };

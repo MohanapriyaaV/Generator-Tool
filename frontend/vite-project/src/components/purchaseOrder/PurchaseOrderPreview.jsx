@@ -75,7 +75,6 @@ const PurchaseOrderPreview = () => {
   const grandTotal = subtotal + taxTotal;
 
   const handleDownloadPDF = async () => {
-<<<<<<< HEAD
     if (!previewRef.current) return;
 
     // Validate PO number before generating PDF
@@ -124,96 +123,72 @@ const PurchaseOrderPreview = () => {
       if (!proceed) return;
     }
 
+    // Generate PDF using the service function
     try {
       setIsGeneratingPDF(true);
-      const canvas = await html2canvas(previewRef.current, {
-        scale: 2,
-        useCORS: true
-      });
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const fileName = `purchase_order_${formData.poNumber || 'document'}.pdf`;
+      const blob = await generatePurchaseOrderPDF(previewRef, fileName);
 
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`purchase_order_${formData.poNumber || 'document'}.pdf`);
+      // Upload to S3 and save to database
+      if (blob) {
+        try {
+          const { uploadPdfToS3, createPurchaseOrder } = await import('../../services/api.js');
+          const s3FileName = `PurchaseOrder_${formData.poNumber || 'document'}_${new Date().toISOString().split('T')[0]}.pdf`;
+          console.log('Uploading PO PDF to S3...');
+          const uploadResult = await uploadPdfToS3(blob, s3FileName, 'PurchaseOrder');
+          console.log('✅ PDF uploaded to S3:', uploadResult.url);
 
-      // Also generate blob and upload to S3, then save purchase order record
-      try {
-        // jsPDF: use output('blob') to get a Blob
-        const blob = pdf.output && typeof pdf.output === 'function' ? pdf.output('blob') : null;
-        if (blob) {
+          // Build payload for creating purchase order record
+          const payload = {
+            poNumber: formData.poNumber || '',
+            poDate: formData.poDate || new Date().toISOString(),
+            totalAmount: Number((grandTotal) || 0),
+            referenceNumber: formData.referenceNumber || '',
+            projectName: formData.projectName || '',
+            billToAddress: {
+              clientName: formData.billToClientName || '',
+              companyName: formData.billToCompanyName || '',
+              street: formData.billToStreet || '',
+              apartment: formData.billToApartment || '',
+              city: formData.billToCity || '',
+              zipCode: formData.billToZipCode || '',
+              country: formData.billToCountryCode || '',
+              state: formData.billToStateCode || '',
+              pan: formData.billToPAN || '',
+              gstin: formData.billToGSTIN || '',
+              phoneNumber: formData.billToPhoneNumber || '',
+            },
+            shipToAddress: {
+              clientName: formData.shipToClientName || '',
+              companyName: formData.shipToCompanyName || '',
+              street: formData.shipToStreet || '',
+              apartment: formData.shipToApartment || '',
+              city: formData.shipToCity || '',
+              zipCode: formData.shipToZipCode || '',
+              country: formData.shipToCountryCode || '',
+              state: formData.shipToStateCode || '',
+              phoneNumber: formData.shipToPhoneNumber || '',
+            },
+            s3Url: uploadResult.url || '',
+            fullPurchaseOrderData: { formData, items, tax }
+          };
+
           try {
-            const { uploadPdfToS3, createPurchaseOrder } = await import('../../services/api.js');
-            const fileName = `PurchaseOrder_${formData.poNumber || 'document'}_${new Date().toISOString().split('T')[0]}.pdf`;
-            console.log('Uploading PO PDF to S3...');
-            const uploadResult = await uploadPdfToS3(blob, fileName, 'PurchaseOrder');
-            console.log('✅ PDF uploaded to S3:', uploadResult.url);
-
-            // Build payload for creating purchase order record
-            const payload = {
-              poNumber: formData.poNumber || '',
-              // ensure valid date is sent
-              poDate: formData.poDate || new Date().toISOString(),
-              totalAmount: Number((grandTotal) || 0),
-              referenceNumber: formData.referenceNumber || '',
-              projectName: formData.projectName || '',
-              billToAddress: {
-                clientName: formData.billToClientName || '',
-                companyName: formData.billToCompanyName || '',
-                street: formData.billToStreet || '',
-                apartment: formData.billToApartment || '',
-                city: formData.billToCity || '',
-                zipCode: formData.billToZipCode || '',
-                country: formData.billToCountryCode || '',
-                state: formData.billToStateCode || '',
-                pan: formData.billToPAN || '',
-                gstin: formData.billToGSTIN || '',
-                phoneNumber: formData.billToPhoneNumber || '',
-              },
-              shipToAddress: {
-                clientName: formData.shipToClientName || '',
-                companyName: formData.shipToCompanyName || '',
-                street: formData.shipToStreet || '',
-                apartment: formData.shipToApartment || '',
-                city: formData.shipToCity || '',
-                zipCode: formData.shipToZipCode || '',
-                country: formData.shipToCountryCode || '',
-                state: formData.shipToStateCode || '',
-                phoneNumber: formData.shipToPhoneNumber || '',
-              },
-              s3Url: uploadResult.url || '',
-              fullPurchaseOrderData: { formData, items, tax }
-            };
-
-            try {
-              const created = await createPurchaseOrder(payload);
-              console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
-            } catch (dbError) {
-              console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
-            }
-          } catch (uploadError) {
-            console.error('❌ Error uploading PO PDF to S3:', uploadError);
+            const created = await createPurchaseOrder(payload);
+            console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
+          } catch (dbError) {
+            console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
           }
-        } else {
-          console.warn('Could not create Blob from PDF (pdf.output not available)');
+        } catch (uploadError) {
+          console.error('❌ Error uploading PO PDF to S3:', uploadError);
         }
-      } catch (err) {
-        console.warn('Could not generate blob from PDF for upload:', err);
       }
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     } finally {
       setIsGeneratingPDF(false);
     }
-=======
-    await generatePurchaseOrderPDF(
-      previewRef,
-      formData,
-      items,
-      tax,
-      grandTotal,
-      setIsGeneratingPDF
-    );
->>>>>>> 3068eb2e3eeb634b09f400d9185691ff1ea360d7
   };
 
   const handleEditPreview = () => {
@@ -251,42 +226,42 @@ const PurchaseOrderPreview = () => {
     
     return (
       <div style={{ lineHeight: '1.6', fontSize: 12 }}>
-        <div style={{ marginBottom: 4 }}>
+        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
           <span style={labelStyle}>Name</span>
-          <span style={valueStyle}>{formData[`${prefix}ClientName`] || '-'}</span>
+          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData[`${prefix}ClientName`] || '-'}</span>
         </div>
-        <div style={{ marginBottom: 4 }}>
+        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
           <span style={labelStyle}>Company</span>
-          <span style={valueStyle}>{formData[`${prefix}CompanyName`] || '-'}</span>
+          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData[`${prefix}CompanyName`] || '-'}</span>
         </div>
-        <div style={{ marginBottom: 4 }}>
+        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
           <span style={labelStyle}>Address</span>
-          <span style={valueStyle}>{addressLine}</span>
+          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{addressLine}</span>
         </div>
-        <div style={{ marginBottom: 4 }}>
+        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
           <span style={labelStyle}>Country</span>
-          <span style={valueStyle}>{(formData[`${prefix}CountryCode`] || '') || '-'}</span>
+          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{(formData[`${prefix}CountryCode`] || '') || '-'}</span>
         </div>
         {prefix === 'billTo' && (
           <>
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
               <span style={labelStyle}>PAN</span>
-              <span style={valueStyle}>{formData.billToPAN || '-'}</span>
+              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToPAN || '-'}</span>
             </div>
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
               <span style={labelStyle}>GSTIN</span>
-              <span style={valueStyle}>{formData.billToGSTIN || '-'}</span>
+              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToGSTIN || '-'}</span>
             </div>
-            <div style={{ marginBottom: 4 }}>
+            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
               <span style={labelStyle}>Phone</span>
-              <span style={valueStyle}>{formData.billToPhoneNumber || '-'}</span>
+              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToPhoneNumber || '-'}</span>
             </div>
           </>
         )}
         {prefix === 'shipTo' && (
-          <div style={{ marginBottom: 4 }}>
+          <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
             <span style={labelStyle}>Phone</span>
-            <span style={valueStyle}>{formData.shipToPhoneNumber || '-'}</span>
+            <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.shipToPhoneNumber || '-'}</span>
           </div>
         )}
       </div>
@@ -327,10 +302,16 @@ const PurchaseOrderPreview = () => {
                   <div>PURCHASE</div>
                   <div>ORDER</div>
                 </div>
-                <div style={{ position: 'absolute', top: '170px', right: 0, textAlign: 'left', width: '100%' }}>
-                  <div style={{ fontSize: 12, marginBottom: 3 }}><strong>PO Number:</strong> {formData.poNumber || '-'}</div>
-                  <div style={{ fontSize: 12, marginBottom: 3 }}><strong>Reference:</strong> {formData.referenceNumber || '-'}</div>
-                  <div style={{ fontSize: 11, marginTop: 3, marginBottom: 0, lineHeight: '1.4' }}>The above PO number & reference must appear on all related correspondence shipping papers and invoices</div>
+                <div style={{ position: 'absolute', top: '185px', left: 0, right: 0, textAlign: 'left', paddingRight: '8px' }}>
+                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex', alignItems: 'flex-start' }}>
+                    <strong style={{ display: 'inline-block', width: '75px', flexShrink: 0 }}>PO Number:</strong>
+                    <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{formData.poNumber || '-'}</span>
+                  </div>
+                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex', alignItems: 'flex-start' }}>
+                    <strong style={{ display: 'inline-block', width: '75px', flexShrink: 0 }}>Reference:</strong>
+                    <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{formData.referenceNumber || '-'}</span>
+                  </div>
+                  <div style={{ fontSize: 11, marginTop: 3, marginBottom: 0, lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>The above PO number & reference must appear on all related correspondence shipping papers and invoices</div>
                 </div>
               </div>
             </div>
@@ -442,7 +423,7 @@ const PurchaseOrderPreview = () => {
               <div className="border" style={{ marginTop: '24px', width: '100%', minHeight: '200px', padding: '12px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: 12, textAlign: 'left' }}>Authorization</div>
                 <div style={{ flex: 1, position: 'relative' }}>
-                  <div style={{ position: 'absolute', bottom: '50px', left: '50%', transform: 'translateX(-50%)', fontSize: 12, textAlign: 'center', width: 'calc(50% - 20px)' }}>
+                  <div style={{ position: 'absolute', bottom: '50px', left: '50%', right: 0, display: 'flex', justifyContent: 'center', fontSize: 12, textAlign: 'center' }}>
                     {formData.poDate ? new Date(formData.poDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                   </div>
                 </div>

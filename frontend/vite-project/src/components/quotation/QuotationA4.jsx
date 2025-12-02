@@ -408,8 +408,18 @@ const QuotationA4 = () => {
             {quotationFrom.countryCode && (
               <p>{Country.getCountryByCode(quotationFrom.countryCode)?.name || quotationFrom.countryCode}</p>
             )}
-            {quotationFrom.pan && <p>PAN: {quotationFrom.pan}</p>}
-            {quotationFrom.gstin && <p>GSTIN: {quotationFrom.gstin}</p>}
+            {quotationFrom.pan && (
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+                <strong style={{ display: 'inline-block', width: '65px', flexShrink: 0 }}>PAN:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationFrom.pan}</span>
+              </p>
+            )}
+            {quotationFrom.gstin && (
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+                <strong style={{ display: 'inline-block', width: '65px', flexShrink: 0 }}>GSTIN:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationFrom.gstin}</span>
+              </p>
+            )}
             {/* Fallback to old address format if granular fields are not available */}
             {!quotationFrom.street && quotationFrom.address && (
               <p className="whitespace-pre-line">{quotationFrom.address}</p>
@@ -436,9 +446,24 @@ const QuotationA4 = () => {
             {quotationFor.countryCode && (
               <p>{Country.getCountryByCode(quotationFor.countryCode)?.name || quotationFor.countryCode}</p>
             )}
-            {quotationFor.pan && <p>PAN: {quotationFor.pan}</p>}
-            {quotationFor.gstin && <p>GSTIN: {quotationFor.gstin}</p>}
-            {quotationFor.phoneNumber && <p>Phone: {quotationFor.phoneNumber}</p>}
+            {quotationFor.pan && (
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+                <strong style={{ display: 'inline-block', width: '65px', flexShrink: 0 }}>PAN:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationFor.pan}</span>
+              </p>
+            )}
+            {quotationFor.gstin && (
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+                <strong style={{ display: 'inline-block', width: '65px', flexShrink: 0 }}>GSTIN:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationFor.gstin}</span>
+              </p>
+            )}
+            {quotationFor.phoneNumber && (
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+                <strong style={{ display: 'inline-block', width: '65px', flexShrink: 0 }}>Phone:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationFor.phoneNumber}</span>
+              </p>
+            )}
             {/* Fallback to old address format if granular fields are not available */}
             {!quotationFor.street && quotationFor.address && (
               <p className="whitespace-pre-line">{quotationFor.address}</p>
@@ -446,27 +471,30 @@ const QuotationA4 = () => {
           </div>
 
           <div className="flex justify-end">
-            <div className="text-left">
-              <p>
-                <strong>Quotation No:</strong>{" "}
-                {quotationDetails.quotationNo || "QT-XXXXXX"}
+            <div className="text-left" style={{ minWidth: '200px' }}>
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '3px' }}>
+                <strong style={{ display: 'inline-block', width: '115px', flexShrink: 0 }}>Quotation No:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationDetails.quotationNo || "QT-XXXXXX"}</span>
               </p>
-              <p>
-                <strong>Date:</strong> {dateString}
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '3px' }}>
+                <strong style={{ display: 'inline-block', width: '115px', flexShrink: 0 }}>Date:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{dateString}</span>
               </p>
-              <p>
-                <strong>Delivery:</strong>{" "}
-                {quotationDetails.deliveryDays
-                  ? `within ${quotationDetails.deliveryDays} days from PO`
-                  : "-"}
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '3px' }}>
+                <strong style={{ display: 'inline-block', width: '115px', flexShrink: 0 }}>Delivery:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                  {quotationDetails.deliveryDays
+                    ? `within ${quotationDetails.deliveryDays} days from PO`
+                    : "-"}
+                </span>
               </p>
-              <p>
-                <strong>Quote Validity:</strong>{" "}
-                {quotationDetails.validityDays || "-"} days
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '3px' }}>
+                <strong style={{ display: 'inline-block', width: '115px', flexShrink: 0 }}>Quote Validity:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationDetails.validityDays || "-"} days</span>
               </p>
-              <p>
-                <strong>Payment Terms:</strong>{" "}
-                {quotationDetails.paymentDays || "-"} days
+              <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '3px' }}>
+                <strong style={{ display: 'inline-block', width: '115px', flexShrink: 0 }}>Payment Terms:</strong>
+                <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{quotationDetails.paymentDays || "-"} days</span>
               </p>
             </div>
           </div>
@@ -557,17 +585,19 @@ const QuotationA4 = () => {
         {/* Bank Details */}
         <div className="text-[11px] mb-3">
           <p className="font-bold underline text-sky-900 mb-1">
-            Company’s Bank Details
+            Company's Bank Details
           </p>
-          <p>
-            <strong>Bank Name:</strong> {bankDetails.bankName || "-"}
+          <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+            <strong style={{ display: 'inline-block', width: '120px', flexShrink: 0 }}>Bank Name:</strong>
+            <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{bankDetails.bankName || "-"}</span>
           </p>
-          <p>
-            <strong>A/c No:</strong> {bankDetails.accountNumber || "-"}
+          <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+            <strong style={{ display: 'inline-block', width: '120px', flexShrink: 0 }}>A/c No:</strong>
+            <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{bankDetails.accountNumber || "-"}</span>
           </p>
-          <p>
-            <strong>Branch & IFSC:</strong> {bankDetails.branch || "-"}{" "}
-            {bankDetails.ifscCode || "-"}
+          <p style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '2px' }}>
+            <strong style={{ display: 'inline-block', width: '120px', flexShrink: 0 }}>Branch & IFSC:</strong>
+            <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{bankDetails.branch || "-"}{" "}{bankDetails.ifscCode || "-"}</span>
           </p>
         </div>
 
