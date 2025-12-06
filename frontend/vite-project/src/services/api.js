@@ -59,6 +59,21 @@ export const getAllProformaInvoices = async () => {
   }
 };
 
+// Get next proforma invoice number
+export const getNextProformaInvoiceNumber = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/proforma-invoices/next-invoice-number`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch next proforma invoice number');
+    }
+    return data.invoiceNumber;
+  } catch (error) {
+    console.error('Error fetching next proforma invoice number:', error);
+    throw error;
+  }
+};
+
 // Get a single proforma invoice by ID
 export const getProformaInvoiceById = async (id) => {
   try {
@@ -187,6 +202,25 @@ export const getAllQuotations = async () => {
     return data;
   } catch (error) {
     console.error('Error fetching quotations:', error);
+    // Provide more specific error messages
+    if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED') || error.message.includes('ERR_CONNECTION_RESET')) {
+      throw new Error('Cannot connect to server. Please make sure the backend server is running on ' + API_BASE_URL);
+    }
+    throw error;
+  }
+};
+
+// Get next quotation number
+export const getNextQuotationNumber = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/quotations/next-quotation-number`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch next quotation number');
+    }
+    return data.quotationNumber;
+  } catch (error) {
+    console.error('Error fetching next quotation number:', error);
     throw error;
   }
 };
@@ -307,6 +341,21 @@ export const getAllInvoices = async () => {
     return data;
   } catch (error) {
     console.error('Error fetching invoices:', error);
+    throw error;
+  }
+};
+
+// Get next invoice number
+export const getNextInvoiceNumber = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/invoices/next-invoice-number`);
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch next invoice number');
+    }
+    return data.invoiceNumber;
+  } catch (error) {
+    console.error('Error fetching next invoice number:', error);
     throw error;
   }
 };
@@ -454,6 +503,34 @@ export const getAllPurchaseOrders = async () => {
     return data;
   } catch (error) {
     console.error('Error fetching purchase orders:', error);
+    throw error;
+  }
+};
+
+// Update a purchase order
+export const updatePurchaseOrder = async (id, purchaseOrderData) => {
+  try {
+    console.log('Sending update request to:', `${API_BASE_URL}/purchase-orders/${id}`);
+    const response = await fetch(`${API_BASE_URL}/purchase-orders/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(purchaseOrderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error updating purchase order:', error);
+    if (error.message.includes('Failed to fetch') || error.message.includes('ERR_CONNECTION_REFUSED')) {
+      throw new Error('Cannot connect to server. Please make sure the backend server is running on ' + API_BASE_URL);
+    }
     throw error;
   }
 };

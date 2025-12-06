@@ -51,6 +51,7 @@ export const QuotationProvider = ({ children }) => {
 
   // Store global taxes separately
   const [globalTaxes, setGlobalTaxes] = useState({ cgst: 0, sgst: 0, igst: 0 });
+  const [taxEnabled, setTaxEnabled] = useState(true);
 
   return (
     <QuotationContext.Provider
@@ -67,6 +68,8 @@ export const QuotationProvider = ({ children }) => {
         setQuotationItems,
         globalTaxes,
         setGlobalTaxes,
+        taxEnabled,
+        setTaxEnabled,
       }}
     >
       {children}

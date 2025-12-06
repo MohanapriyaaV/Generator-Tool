@@ -9,23 +9,30 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
   const items = props.items || [];
   const issueDate = props.issueDate || new Date().toLocaleDateString();
   const invoiceNumber = props.invoiceNumber || 'INV-' + new Date().getTime();
+  // Get taxEnabled from props (passed from InvoiceFormSinglePage)
+  const taxEnabled = props.taxEnabled !== false; // Default to true if not provided
+  
   // Helper functions for tax and totals
-  const getIGST = (item) => Number(item.cgst) + Number(item.sgst);
+  const getIGST = (item) => {
+    if (!taxEnabled) return 0;
+    return Number(item.cgst) + Number(item.sgst);
+  };
   const getTotalTaxAmount = (item) => {
+    if (!taxEnabled) return 0;
     const base = Number(item.quantity) * Number(item.price);
     const igst = getIGST(item);
     return ((base * igst) / 100).toFixed(2);
   };
   const getTotalAmount = (item) => {
     const base = Number(item.quantity) * Number(item.price);
-    const tax = Number(getTotalTaxAmount(item));
+    const tax = taxEnabled ? Number(getTotalTaxAmount(item)) : 0;
     return (base + tax).toFixed(2);
   };
   const getBaseAmount = (item) => {
     return (Number(item.quantity) * Number(item.price)).toFixed(2);
   };
   const grandTotalBase = items?.reduce((sum, item) => sum + Number(getBaseAmount(item)), 0) || 0;
-  const grandTotalTax = items?.reduce((sum, item) => sum + Number(getTotalTaxAmount(item)), 0) || 0;
+  const grandTotalTax = taxEnabled ? (items?.reduce((sum, item) => sum + Number(getTotalTaxAmount(item)), 0) || 0) : 0;
   const grandTotalAmount = items?.reduce((sum, item) => sum + Number(getTotalAmount(item)), 0) || 0;
   // Add a prop to control PDF mode
   const { isPdfMode = false } = props;
@@ -136,12 +143,14 @@ const InvoiceA4 = React.forwardRef((props, ref) => {
               <td colSpan={2} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>{grandTotalBase.toFixed(2)}</td>
               <td style={{ border: '1px solid #bbb', padding: 8 }}></td>
             </tr>
-            {/* Total Tax row */}
-            <tr style={{ background: '#f9f9f9', fontWeight: 600 }}>
-              <td colSpan={4} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Tax total</td>
-              <td colSpan={2} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>{grandTotalTax.toFixed(2)}</td>
-              <td style={{ border: '1px solid #bbb', padding: 8 }}></td>
-            </tr>
+            {/* Total Tax row - only show if tax is enabled */}
+            {taxEnabled && grandTotalTax > 0 && (
+              <tr style={{ background: '#f9f9f9', fontWeight: 600 }}>
+                <td colSpan={4} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Tax total</td>
+                <td colSpan={2} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>{grandTotalTax.toFixed(2)}</td>
+                <td style={{ border: '1px solid #bbb', padding: 8 }}></td>
+              </tr>
+            )}
             {/* Grand Total row */}
             <tr style={{ background: '#f0f0f0', fontWeight: 700 }}>
               <td colSpan={4} style={{ border: '1px solid #bbb', padding: 8, textAlign: 'right' }}>Grand Total</td>

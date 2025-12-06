@@ -9,6 +9,7 @@ const PurchaseOrderHistory = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchOrders();
@@ -58,13 +59,72 @@ const PurchaseOrderHistory = () => {
     if (!billToAddress) return <span className="address-text">-</span>;
     return (
       <div className="address-cell">
-        <strong>{billToAddress.companyName || '-'}</strong>
-        {billToAddress.contactName && <span className="address-text">{billToAddress.contactName}</span>}
-        {billToAddress.address && <span className="address-text">{billToAddress.address}</span>}
+        <strong><Highlight text={billToAddress.companyName || '-'} /></strong>
+        {billToAddress.contactName && (
+          <span className="address-text">
+            <Highlight text={billToAddress.contactName} />
+          </span>
+        )}
+        {billToAddress.address && (
+          <span className="address-text">
+            <Highlight text={billToAddress.address} />
+          </span>
+        )}
         {billToAddress.city && billToAddress.state && billToAddress.pincode && (
-          <span className="address-text">{billToAddress.city}, {billToAddress.state}, {billToAddress.pincode}, {billToAddress.country || 'IN'}</span>
+          <span className="address-text">
+            <Highlight
+              text={`${billToAddress.city}, ${billToAddress.state}, ${billToAddress.pincode}, ${billToAddress.country || 'IN'}`}
+            />
+          </span>
         )}
       </div>
+    );
+  };
+
+  const normalizeText = (value) => {
+    if (!value && value !== 0) return '';
+    return String(value);
+  };
+
+  const rowMatchesSearch = (order) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+
+    const vendor = order.billToAddress || {};
+    const searchable = [
+      order.projectName || '',
+      order.referenceNumber || '',
+      order.poNumber || '',
+      vendor.companyName || '',
+      vendor.contactName || '',
+      vendor.address || '',
+      vendor.city || '',
+      vendor.state || '',
+      vendor.country || '',
+      normalizeText(order.totalAmount),
+      formatDateTime(order.poDate || order.createdAt),
+    ].join(' ').toLowerCase();
+
+    return searchable.includes(term);
+  };
+
+  const Highlight = ({ text }) => {
+    if (!searchTerm.trim()) return <>{text}</>;
+
+    const term = searchTerm;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = String(text ?? '').split(regex);
+
+    return (
+      <>
+        {parts.map((part, idx) =>
+          regex.test(part) ? (
+            <span key={idx} className="highlight-match">{part}</span>
+          ) : (
+            <span key={idx}>{part}</span>
+          )
+        )}
+      </>
     );
   };
 
@@ -77,6 +137,15 @@ const PurchaseOrderHistory = () => {
         </button>
         <h1 className="history-title">Purchase Order History</h1>
         <div className="history-actions">
+          <div className="history-search-wrapper">
+            <input
+              type="text"
+              className="history-search-input"
+              placeholder="Search by any word (project, vendor, number, amount...)"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <button className="refresh-button" onClick={fetchOrders} disabled={loading}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0A8.003 8.003 0 0012 20a8.003 8.003 0 007.418-11" /></svg>
             <span>Refresh</span>
@@ -118,19 +187,27 @@ const PurchaseOrderHistory = () => {
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order, idx) => (
+                {orders.filter(rowMatchesSearch).map((order, idx) => (
                   <tr key={order._id || idx}>
                     <td className="serial-number">{idx + 1}</td>
-                    <td>{order.projectName || '-'}</td>
+                    <td><Highlight text={order.projectName || '-'} /></td>
                     <td>
                       {order.referenceNumber ? (
-                        <span className="invoice-number">{order.referenceNumber}</span>
+                        <span className="invoice-number">
+                          <Highlight text={order.referenceNumber} />
+                        </span>
                       ) : '-'}
                     </td>
-                    <td>{order.poNumber || '-'}</td>
+                    <td>
+                      <Highlight text={order.poNumber || '-'} />
+                    </td>
                     <td>{renderVendorInfo(order.billToAddress)}</td>
-                    <td>{formatDateTime(order.poDate || order.createdAt)}</td>
-                    <td className="amount-cell">{formatAmount(order.totalAmount)}</td>
+                    <td>
+                      <Highlight text={formatDateTime(order.poDate || order.createdAt)} />
+                    </td>
+                    <td className="amount-cell">
+                      <Highlight text={formatAmount(order.totalAmount)} />
+                    </td>
                     <td className="s3-url-cell">
                       {order.s3Url ? (
                         <a href={order.s3Url} target="_blank" rel="noopener noreferrer" className="s3-link">

@@ -6,10 +6,12 @@ import {
   updateProformaInvoice,
   deleteProformaInvoice,
   getProformaInvoiceByReferenceNo,
+  getNextProformaInvoiceNumber,
 } from "../controllers/proforma_invoice_controller.js";
 
 const router = express.Router();
 
+router.get("/next-invoice-number", getNextProformaInvoiceNumber); // Get next proforma invoice number
 router.post("/", createProformaInvoice);        // Save proforma invoice
 router.get("/", getProformaInvoices);            // Fetch all proforma invoices
 router.get("/by-reference/:referenceNo", getProformaInvoiceByReferenceNo); // Fetch by reference number

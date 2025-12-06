@@ -1,4 +1,5 @@
 import { Quotation } from "../models/quotation_model.js";
+import { getCurrentFinancialYear, extractFinancialYear, extractSequenceNumber } from "../utils/financialYear.js";
 
 // Save a new quotation
 export const createQuotation = async (req, res) => {
@@ -125,6 +126,39 @@ export const updateQuotation = async (req, res) => {
     });
   } catch (err) {
     console.error("Error updating quotation:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get next quotation number
+export const getNextQuotationNumber = async (req, res) => {
+  try {
+    const financialYear = getCurrentFinancialYear();
+    const prefix = 'QT';
+    
+    // Get all quotations for the current financial year
+    const allQuotations = await Quotation.find();
+    const currentYearNumbers = allQuotations
+      .map(q => q.quotationNo || q.fullQuotationData?.quotationNo || '')
+      .filter(num => {
+        const year = extractFinancialYear(num);
+        return year === financialYear && num.startsWith(prefix);
+      });
+    
+    // Extract sequence numbers and find the highest
+    const sequenceNumbers = currentYearNumbers
+      .map(num => extractSequenceNumber(num))
+      .filter(num => num !== null);
+    
+    const maxSequence = sequenceNumbers.length > 0 ? Math.max(...sequenceNumbers) : 0;
+    const nextSequence = maxSequence + 1;
+    const paddedSequence = nextSequence.toString().padStart(4, '0');
+    
+    const quotationNumber = `${prefix}${financialYear}${paddedSequence}`;
+    
+    res.json({ quotationNumber });
+  } catch (err) {
+    console.error("Error generating quotation number:", err);
     res.status(500).json({ error: err.message });
   }
 };

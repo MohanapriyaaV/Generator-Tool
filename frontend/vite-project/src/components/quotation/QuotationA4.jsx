@@ -14,6 +14,7 @@ const QuotationA4 = () => {
     quotationDetails,
     quotationItems,
     globalTaxes,
+    taxEnabled,
   } = useContext(QuotationContext);
 
   const navigate = useNavigate();
@@ -30,9 +31,9 @@ const QuotationA4 = () => {
     (sum, item) => sum + (item.amount || 0),
     0
   );
-  const cgstAmount = (totalBaseAmount * cgst) / 100;
-  const sgstAmount = (totalBaseAmount * sgst) / 100;
-  const igstAmount = (totalBaseAmount * igst) / 100;
+  const cgstAmount = taxEnabled ? (totalBaseAmount * cgst) / 100 : 0;
+  const sgstAmount = taxEnabled ? (totalBaseAmount * sgst) / 100 : 0;
+  const igstAmount = taxEnabled ? (totalBaseAmount * igst) / 100 : 0;
   const grandTotal = totalBaseAmount + cgstAmount + sgstAmount + igstAmount;
 
   // Save quotation to database when component mounts and data is available
@@ -541,30 +542,36 @@ const QuotationA4 = () => {
               </td>
               <td className="border border-black text-right px-2">₹ {totalBaseAmount.toFixed(2)}</td>
             </tr>
-            <tr>
-              <td colSpan="5" className="border border-black text-right px-2">
-                CGST ({cgst}%)
-              </td>
-              <td className="border border-black text-right px-2">
-                ₹ {cgstAmount.toFixed(2)}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="5" className="border border-black text-right px-2">
-                SGST ({sgst}%)
-              </td>
-              <td className="border border-black text-right px-2">
-                ₹ {sgstAmount.toFixed(2)}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan="5" className="border border-black text-right px-2">
-                IGST ({igst}%)
-              </td>
-              <td className="border border-black text-right px-2">
-                ₹ {igstAmount.toFixed(2)}
-              </td>
-            </tr>
+            {taxEnabled && cgst > 0 && (
+              <tr>
+                <td colSpan="5" className="border border-black text-right px-2">
+                  CGST ({cgst}%)
+                </td>
+                <td className="border border-black text-right px-2">
+                  ₹ {cgstAmount.toFixed(2)}
+                </td>
+              </tr>
+            )}
+            {taxEnabled && sgst > 0 && (
+              <tr>
+                <td colSpan="5" className="border border-black text-right px-2">
+                  SGST ({sgst}%)
+                </td>
+                <td className="border border-black text-right px-2">
+                  ₹ {sgstAmount.toFixed(2)}
+                </td>
+              </tr>
+            )}
+            {taxEnabled && igst > 0 && (
+              <tr>
+                <td colSpan="5" className="border border-black text-right px-2">
+                  IGST ({igst}%)
+                </td>
+                <td className="border border-black text-right px-2">
+                  ₹ {igstAmount.toFixed(2)}
+                </td>
+              </tr>
+            )}
             {/* Amount in words - shown left of the final numeric total */}
             <tr>
               <td colSpan="5" className="border border-black px-2">

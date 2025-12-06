@@ -5,13 +5,15 @@ import './History.css';
 
 const ReferenceHistory = () => {
   const navigate = useNavigate();
-  const [referenceNo, setReferenceNo] = useState('');
+  const [searchTerm, setSearchTerm] = useState(''); // generic word search term
+  const [allQuotations, setAllQuotations] = useState([]);
+  const [allProformaInvoices, setAllProformaInvoices] = useState([]);
+  const [allInvoices, setAllInvoices] = useState([]);
   const [quotations, setQuotations] = useState([]);
   const [proformaInvoices, setProformaInvoices] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searched, setSearched] = useState(false);
 
   const formatDate = (dateString) => {
     if (!dateString) return '-';
@@ -163,51 +165,22 @@ const ReferenceHistory = () => {
     };
   };
 
-  const handleSearch = async () => {
-    if (!referenceNo.trim()) {
-      setError('Please enter a reference number');
-      return;
-    }
-
+  const fetchAllData = async () => {
     setLoading(true);
     setError(null);
-    setSearched(true);
 
     try {
-      // Fetch all data
+      // Fetch all data once
       const [allQuotations, allProformaInvoices, allInvoices] = await Promise.all([
         getAllQuotations(),
         getAllProformaInvoices(),
         getAllInvoices()
       ]);
 
-      // Filter by reference number
-      const refNoUpper = referenceNo.trim().toUpperCase();
-      
-      const filteredQuotations = allQuotations.filter(q => {
-        const refNo = q.referenceNo || q.fullQuotationData?.quotationDetails?.referenceNo || '';
-        return refNo.toUpperCase() === refNoUpper;
-      });
-
-      const filteredProformaInvoices = allProformaInvoices.filter(pi => {
-        const refNo = pi.referenceNo || '';
-        return refNo.toUpperCase() === refNoUpper;
-      });
-
-      const filteredInvoices = allInvoices.filter(inv => {
-        const refNo = inv.referenceNo || 
-                      inv.fullInvoiceData?.invoiceDetails?.referenceNo ||
-                      inv.fullInvoiceData?.formData?.referenceNo || '';
-        return refNo.toUpperCase() === refNoUpper;
-      });
-
-      setQuotations(filteredQuotations);
-      setProformaInvoices(filteredProformaInvoices);
-      setInvoices(filteredInvoices);
-
-      if (filteredQuotations.length === 0 && filteredProformaInvoices.length === 0 && filteredInvoices.length === 0) {
-        setError('No records found with the given reference number');
-      }
+      // Store all records; filtering happens in a separate effect
+      setAllQuotations(allQuotations);
+      setAllProformaInvoices(allProformaInvoices);
+      setAllInvoices(allInvoices);
     } catch (err) {
       console.error('Error searching:', err);
       setError(err.message || 'Failed to search records');
@@ -218,6 +191,26 @@ const ReferenceHistory = () => {
 
   const handleBack = () => {
     navigate('/');
+  };
+
+  const Highlight = ({ text }) => {
+    if (!searchTerm.trim()) return <>{text}</>;
+
+    const term = searchTerm;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = String(text ?? '').split(regex);
+
+    return (
+      <>
+        {parts.map((part, idx) =>
+          regex.test(part) ? (
+            <span key={idx} className="highlight-match">{part}</span>
+          ) : (
+            <span key={idx}>{part}</span>
+          )
+        )}
+      </>
+    );
   };
 
   const renderTable = (data, type) => {
@@ -300,26 +293,38 @@ const ReferenceHistory = () => {
               return (
                 <tr key={item._id}>
                   <td className="serial-number">{index + 1}</td>
-                  <td>{projectName}</td>
-                  <td className="invoice-number">{referenceNo}</td>
+                  <td><Highlight text={projectName} /></td>
+                  <td className="invoice-number"><Highlight text={referenceNo} /></td>
                   <td>
                     <div className="address-cell">
                       {hasNameOrCompany ? (
                         <>
-                          {vendorData.name && <strong>{vendorData.name}</strong>}
+                          {vendorData.name && <strong><Highlight text={vendorData.name} /></strong>}
                           {vendorData.name && vendorData.company && <br />}
-                          {vendorData.company && <strong>{vendorData.company}</strong>}
+                          {vendorData.company && <strong><Highlight text={vendorData.company} /></strong>}
                           {hasAddress && (hasNameOrCompany ? <br /> : '')}
-                          {hasAddress && <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span>}
+                          {hasAddress && (
+                            <span style={{ fontSize: '0.85em', color: '#666' }}>
+                              <Highlight text={vendorData.address} />
+                            </span>
+                          )}
                           {!hasNameOrCompany && !hasAddress && '-'}
                         </>
                       ) : (
-                        hasAddress ? <span style={{ fontSize: '0.85em', color: '#666' }}>{vendorData.address}</span> : '-'
+                        hasAddress ? (
+                          <span style={{ fontSize: '0.85em', color: '#666' }}>
+                            <Highlight text={vendorData.address} />
+                          </span>
+                        ) : '-'
                       )}
                     </div>
                   </td>
-                  <td className="invoice-number">{documentNumber}</td>
-                  <td className="amount-cell">{formatAmount(item.totalAmount)}</td>
+                  <td className="invoice-number">
+                    <Highlight text={documentNumber} />
+                  </td>
+                  <td className="amount-cell">
+                    <Highlight text={formatAmount(item.totalAmount)} />
+                  </td>
                   <td className="s3-url-cell">
                     {s3Url ? (
                       <a 
@@ -347,6 +352,126 @@ const ReferenceHistory = () => {
     );
   };
 
+  // Fetch all data once on mount
+  React.useEffect(() => {
+    fetchAllData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-filter dynamically whenever search term or data changes
+  React.useEffect(() => {
+    if (!allQuotations.length && !allProformaInvoices.length && !allInvoices.length) {
+      setQuotations([]);
+      setProformaInvoices([]);
+      setInvoices([]);
+      return;
+    }
+
+    if (!searchTerm.trim()) {
+      setError(null);
+      setQuotations([]);
+      setProformaInvoices([]);
+      setInvoices([]);
+      return;
+    }
+
+    const term = searchTerm.trim().toLowerCase();
+
+    const filteredQuotations = allQuotations.filter(q => {
+      const projectName = q.projectName || 
+                          q.fullQuotationData?.quotationDetails?.projectName ||
+                          q.quotationDetails?.projectName || '';
+      const refNo = q.referenceNo || q.fullQuotationData?.quotationDetails?.referenceNo || '';
+      const vendor = formatQuotationAddressData(q.toAddress, q.fullQuotationData);
+      const quotationNo = q.quotationNo || '';
+      const amountText = (q.totalAmount ?? '').toString();
+
+      const searchable = [
+        projectName,
+        refNo,
+        vendor.name,
+        vendor.company,
+        vendor.address,
+        quotationNo,
+        amountText
+      ].join(' ').toLowerCase();
+
+      return searchable.includes(term);
+    });
+
+    const filteredProformaInvoices = allProformaInvoices.filter(pi => {
+      const projectName = pi.projectName || 
+                          pi.fullInvoiceData?.projectName ||
+                          pi.fullInvoiceData?.formData?.projectName || '';
+      const refNo = pi.referenceNo || '';
+      const vendor = formatProformaAddressData(pi.billToAddress, pi.fullInvoiceData);
+      const invoiceNumber = pi.invoiceNumber || '';
+      const amountText = (pi.totalAmount ?? '').toString();
+
+      const searchable = [
+        projectName,
+        refNo,
+        vendor.name,
+        vendor.company,
+        vendor.address,
+        invoiceNumber,
+        amountText
+      ].join(' ').toLowerCase();
+
+      return searchable.includes(term);
+    });
+
+    const filteredInvoices = allInvoices.filter(inv => {
+      const projectName = inv.projectName || 
+                          inv.fullInvoiceData?.projectName ||
+                          inv.fullInvoiceData?.formData?.projectName || '';
+      const refNo = inv.referenceNo || 
+                    inv.fullInvoiceData?.invoiceDetails?.referenceNo ||
+                    inv.fullInvoiceData?.formData?.referenceNo || '';
+      const vendor = formatInvoiceAddressData(inv.toAddress, inv.fullInvoiceData);
+
+      let actualInvoiceNumber = inv.invoiceNumber;
+      if (!actualInvoiceNumber || actualInvoiceNumber === 'Auto' || actualInvoiceNumber.trim() === '') {
+        if (inv.fullInvoiceData?.invoiceNumber && inv.fullInvoiceData.invoiceNumber !== 'Auto') {
+          actualInvoiceNumber = inv.fullInvoiceData.invoiceNumber;
+        } else if (inv.fullInvoiceData?.invoiceDetails?.number && inv.fullInvoiceData.invoiceDetails.number !== 'Auto') {
+          actualInvoiceNumber = inv.fullInvoiceData.invoiceDetails.number;
+        } else if (inv.fullInvoiceData?.invoiceNumber) {
+          actualInvoiceNumber = inv.fullInvoiceData.invoiceNumber;
+        } else if (inv._id) {
+          const idStr = inv._id.toString();
+          actualInvoiceNumber = `INV-${idStr.slice(-6).toUpperCase()}`;
+        } else {
+          actualInvoiceNumber = '';
+        }
+      }
+
+      const amountText = (inv.totalAmount ?? '').toString();
+
+      const searchable = [
+        projectName,
+        refNo,
+        vendor.name,
+        vendor.company,
+        vendor.address,
+        actualInvoiceNumber,
+        amountText
+      ].join(' ').toLowerCase();
+
+      return searchable.includes(term);
+    });
+
+    setQuotations(filteredQuotations);
+    setProformaInvoices(filteredProformaInvoices);
+    setInvoices(filteredInvoices);
+
+    if (filteredQuotations.length === 0 && filteredProformaInvoices.length === 0 && filteredInvoices.length === 0) {
+      setError('No records found for the given search value');
+    } else {
+      setError(null);
+    }
+  }, [searchTerm, allQuotations, allProformaInvoices, allInvoices]);
+
   return (
     <div className="history-container">
       <div className="history-header">
@@ -356,7 +481,7 @@ const ReferenceHistory = () => {
           </svg>
           Back
         </button>
-        <h1 className="history-title">Search by Reference Number</h1>
+        <h1 className="history-title">Search</h1>
         <div className="history-actions"></div>
       </div>
 
@@ -364,57 +489,41 @@ const ReferenceHistory = () => {
         <div style={{ padding: '2rem' }}>
           <div style={{ marginBottom: '2rem' }}>
             <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '1rem', fontWeight: '600', color: '#374151' }}>
-              Reference Number
+              Search
             </label>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <input
                 type="text"
-                value={referenceNo}
-                onChange={(e) => setReferenceNo(e.target.value.toUpperCase())}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="Enter reference number (e.g., VSREF0000)"
-                style={{ 
-                  flex: 1, 
-                  border: '2px solid #e5e7eb', 
-                  borderRadius: '8px', 
-                  padding: '0.75rem 1rem',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'border-color 0.2s'
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#667eea'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by any word (project, vendor, reference, number, amount...)"
+                className="history-search-input"
+                style={{ flex: 1, maxWidth: '480px' }}
                 disabled={loading}
               />
               <button
-                onClick={handleSearch}
+                type="button"
+                className="history-search-button"
+                onClick={() => !loading && setSearchTerm((prev) => prev.trim())}
                 disabled={loading}
-                style={{
-                  padding: '0.75rem 1.5rem',
-                  background: loading ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontSize: '1rem',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(0)';
-                    e.target.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
-                  }
-                }}
               >
-                {loading ? 'Searching...' : 'Search'}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.8}
+                  stroke="currentColor"
+                  className="history-search-button-icon"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                  />
+                </svg>
+                <span className="history-search-button-text">
+                  {loading ? 'Searching...' : 'Search'}
+                </span>
               </button>
             </div>
           </div>
@@ -439,7 +548,7 @@ const ReferenceHistory = () => {
             </div>
           )}
 
-          {!loading && searched && (
+          {!loading && searchTerm.trim() && (
             <>
               {quotations.length === 0 && proformaInvoices.length === 0 && invoices.length === 0 ? (
                 <div className="empty-state">
@@ -447,7 +556,7 @@ const ReferenceHistory = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h11.25c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                   </svg>
                   <h2>No Records Found</h2>
-                  <p>No records found with reference number: {referenceNo}</p>
+                  <p>No records found for: {searchTerm}</p>
                 </div>
               ) : (
                 <div style={{ paddingTop: '1rem' }}>

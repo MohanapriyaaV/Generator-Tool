@@ -248,6 +248,83 @@
   font-weight: 600;
 }
 
+/* Search input for history pages */
+.history-search-wrapper {
+  display: flex;
+  align-items: center;
+  margin-right: 0.75rem;
+}
+
+.history-search-input {
+  padding: 0.55rem 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgba(209, 213, 219, 0.8);
+  font-size: 0.95rem;
+  min-width: 260px;
+  max-width: 320px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.98);
+  color: #111827;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+}
+
+.history-search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.25);
+  transform: translateY(-1px);
+}
+
+.history-search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Primary search button for Search page */
+.history-search-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  color: #ffffff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(88, 28, 135, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  white-space: nowrap;
+}
+
+.history-search-button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.3);
+  box-shadow: 0 3px 10px rgba(148, 163, 184, 0.4);
+}
+
+.history-search-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(88, 28, 135, 0.4);
+  filter: brightness(1.03);
+}
+
+.history-search-button-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.history-search-button-text {
+  letter-spacing: 0.03em;
+}
+
+/* Highlighted match inside table cells */
+.highlight-match {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.4), rgba(252, 211, 77, 0.8));
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
 .error-message {
   max-width: 600px;
   margin: 4rem auto;
