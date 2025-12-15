@@ -10,20 +10,6 @@ const PurchaseOrderPreview = () => {
   const [data, setData] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const previewRef = useRef();
-  const generatedPoNumeric = location.state?.generatedPoNumeric || null;
-
-  // Helper to parse PO number to numeric
-  const parseBackendPoToNumeric = (backendPo) => {
-    if (!backendPo) return null;
-    const m = backendPo.match(/(\d+)/);
-    return m ? parseInt(m[0], 10) : null;
-  };
-
-  // Helper to format VIS PO
-  const formatVISPo = (num) => {
-    if (num === null || num === undefined) return '';
-    return `VIS_PO_${String(num).padStart(4, '0')}`;
-  };
 
   useEffect(() => {
     if (location.state?.data) {
@@ -75,130 +61,14 @@ const PurchaseOrderPreview = () => {
   const grandTotal = subtotal + taxTotal;
 
   const handleDownloadPDF = async () => {
-    if (!previewRef.current) return;
-
-    // Validate PO number before generating PDF
-    const poNumber = formData.poNumber?.trim();
-    if (!poNumber) {
-      alert('PO number is required');
-      return;
-    }
-
-    // Check format
-    if (!poNumber.match(/^VIS_PO_\d{4}$/)) {
-      alert('PO number must be in format VIS_PO_0001');
-      return;
-    }
-
-    // Extract numeric part
-    const numericPart = parseBackendPoToNumeric(poNumber);
-    if (numericPart === null) {
-      alert('Invalid PO number format');
-      return;
-    }
-
-    // Check if it's in ascending order from generated number
-    if (generatedPoNumeric !== null && numericPart < generatedPoNumeric) {
-      alert(`PO number must be ${formatVISPo(generatedPoNumeric)} or higher`);
-      return;
-    }
-
-    // Check uniqueness in database
-    try {
-      const { getAllPurchaseOrders } = await import('../../services/api.js');
-      const allPOs = await getAllPurchaseOrders();
-      const existingPO = allPOs.find(po => {
-        const existingPoNumber = po.poNumber || po.fullPurchaseOrderData?.poNumber;
-        return existingPoNumber && existingPoNumber.toUpperCase() === poNumber.toUpperCase();
-      });
-
-      if (existingPO) {
-        alert('This PO number already exists. Please use a different number.');
-        return;
-      }
-    } catch (error) {
-      console.error('Error checking PO number uniqueness:', error);
-      // Continue anyway, but warn user
-      const proceed = window.confirm('Could not verify PO number uniqueness. Do you want to continue?');
-      if (!proceed) return;
-    }
-
-    // Generate PDF using the service function
-    try {
-      setIsGeneratingPDF(true);
-      const fileName = `purchase_order_${formData.poNumber || 'document'}.pdf`;
-      const blob = await generatePurchaseOrderPDF(previewRef, fileName);
-
-      // Upload to S3 and save to database
-      if (blob) {
-        try {
-          const { uploadPdfToS3, createPurchaseOrder } = await import('../../services/api.js');
-          const s3FileName = `PurchaseOrder_${formData.poNumber || 'document'}_${new Date().toISOString().split('T')[0]}.pdf`;
-          console.log('Uploading PO PDF to S3...');
-          const uploadResult = await uploadPdfToS3(blob, s3FileName, 'PurchaseOrder');
-          console.log('✅ PDF uploaded to S3:', uploadResult.url);
-
-          // Build payload for creating purchase order record
-          const payload = {
-            poNumber: formData.poNumber || '',
-            poDate: formData.poDate || new Date().toISOString(),
-            totalAmount: Number((grandTotal) || 0),
-            referenceNumber: formData.referenceNumber || '',
-            projectName: formData.projectName || '',
-            billToAddress: {
-              clientName: formData.billToClientName || '',
-              companyName: formData.billToCompanyName || '',
-              street: formData.billToStreet || '',
-              apartment: formData.billToApartment || '',
-              city: formData.billToCity || '',
-              zipCode: formData.billToZipCode || '',
-              country: formData.billToCountryCode || '',
-              state: formData.billToStateCode || '',
-              pan: formData.billToPAN || '',
-              gstin: formData.billToGSTIN || '',
-              phoneNumber: formData.billToPhoneNumber || '',
-            },
-            shipToAddress: {
-              clientName: formData.shipToClientName || '',
-              companyName: formData.shipToCompanyName || '',
-              street: formData.shipToStreet || '',
-              apartment: formData.shipToApartment || '',
-              city: formData.shipToCity || '',
-              zipCode: formData.shipToZipCode || '',
-              country: formData.shipToCountryCode || '',
-              state: formData.shipToStateCode || '',
-              phoneNumber: formData.shipToPhoneNumber || '',
-            },
-            s3Url: uploadResult.url || '',
-            fullPurchaseOrderData: { formData, items, tax }
-          };
-
-          try {
-            const created = await createPurchaseOrder(payload);
-            console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
-          } catch (dbError) {
-            console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
-          }
-        } catch (uploadError) {
-          console.error('❌ Error uploading PO PDF to S3:', uploadError);
-        }
-      }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Failed to generate PDF. Please try again.');
-    } finally {
-      setIsGeneratingPDF(false);
-    }
+    setIsGeneratingPDF(true);
+    const fileName = `PO_${formData.poNumber || 'Document'}.pdf`;
+    await generatePurchaseOrderPDF(previewRef, fileName);
+    setIsGeneratingPDF(false);
   };
 
   const handleEditPreview = () => {
-    navigate('/purchase-order', { 
-      state: { 
-        initialData: formData, 
-        items,
-        generatedPoNumeric 
-      } 
-    });
+    navigate('/purchase-order', { state: { initialData: formData, items } });
   };
 
   const handleCreateNew = () => {
@@ -220,48 +90,44 @@ const PurchaseOrderPreview = () => {
     
     const addressLine = addressParts.length > 0 ? addressParts.join(', ') : '-';
     
-    // Match table cell padding (6px 8px) - labels align with table content
-    const labelStyle = { display: 'inline-block', width: '70px', fontWeight: 'bold' };
-    const valueStyle = { display: 'inline-block' };
-    
     return (
       <div style={{ lineHeight: '1.6', fontSize: 12 }}>
-        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-          <span style={labelStyle}>Name</span>
-          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData[`${prefix}ClientName`] || '-'}</span>
+        <div style={{ marginBottom: 4, display: 'flex' }}>
+          <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Name</span>
+          <span style={{ flex: 1 }}>{formData[`${prefix}ClientName`] || '-'}</span>
         </div>
-        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-          <span style={labelStyle}>Company</span>
-          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData[`${prefix}CompanyName`] || '-'}</span>
+        <div style={{ marginBottom: 4, display: 'flex' }}>
+          <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Company</span>
+          <span style={{ flex: 1 }}>{formData[`${prefix}CompanyName`] || '-'}</span>
         </div>
-        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-          <span style={labelStyle}>Address</span>
-          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{addressLine}</span>
+        <div style={{ marginBottom: 4, display: 'flex' }}>
+          <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Address</span>
+          <span style={{ flex: 1 }}>{addressLine}</span>
         </div>
-        <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-          <span style={labelStyle}>Country</span>
-          <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{(formData[`${prefix}CountryCode`] || '') || '-'}</span>
+        <div style={{ marginBottom: 4, display: 'flex' }}>
+          <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Country</span>
+          <span style={{ flex: 1 }}>{(formData[`${prefix}CountryCode`] || '') || '-'}</span>
         </div>
         {prefix === 'billTo' && (
           <>
-            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-              <span style={labelStyle}>PAN</span>
-              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToPAN || '-'}</span>
+            <div style={{ marginBottom: 4, display: 'flex' }}>
+              <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>PAN</span>
+              <span style={{ flex: 1 }}>{formData.billToPAN || '-'}</span>
             </div>
-            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-              <span style={labelStyle}>GSTIN</span>
-              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToGSTIN || '-'}</span>
+            <div style={{ marginBottom: 4, display: 'flex' }}>
+              <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>GSTIN</span>
+              <span style={{ flex: 1 }}>{formData.billToGSTIN || '-'}</span>
             </div>
-            <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-              <span style={labelStyle}>Phone</span>
-              <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.billToPhoneNumber || '-'}</span>
+            <div style={{ marginBottom: 4, display: 'flex' }}>
+              <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Phone</span>
+              <span style={{ flex: 1 }}>{formData.billToPhoneNumber || '-'}</span>
             </div>
           </>
         )}
         {prefix === 'shipTo' && (
-          <div style={{ marginBottom: 4, display: 'flex', alignItems: 'flex-start' }}>
-            <span style={labelStyle}>Phone</span>
-            <span style={{ ...valueStyle, marginLeft: '4px', flex: 1 }}>{formData.shipToPhoneNumber || '-'}</span>
+          <div style={{ marginBottom: 4, display: 'flex' }}>
+            <span style={{ width: '70px', fontWeight: 'bold', flexShrink: 0 }}>Phone</span>
+            <span style={{ flex: 1 }}>{formData.shipToPhoneNumber || '-'}</span>
           </div>
         )}
       </div>
@@ -278,7 +144,7 @@ const PurchaseOrderPreview = () => {
             padding: '40px',
             boxSizing: 'border-box'
           }}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-2 mb-3" style={{ position: 'relative' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-2 mb-3" style={{ position: 'relative', alignItems: 'flex-start' }}>
               <div>
                 <img src={logo} alt="Vista Logo" style={{ width: 280, marginBottom: 12 }} />
                 <div style={{ fontSize: 12, lineHeight: '1.5', textAlign: 'left' }}>
@@ -297,22 +163,22 @@ const PurchaseOrderPreview = () => {
                   )}
                 </div>
               </div>
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', top: '60px', right: 0, fontSize: 28, letterSpacing: 2, fontWeight: 'bold', lineHeight: 1.2, color: '#333', textAlign: 'right' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ fontSize: 28, letterSpacing: 2, fontWeight: 'bold', lineHeight: 1.2, color: '#333', textAlign: 'right', marginTop: '84px', marginBottom: 8, alignSelf: 'flex-end' }}>
                   <div>PURCHASE</div>
                   <div>ORDER</div>
                 </div>
-                <div style={{ position: 'absolute', top: '185px', left: 0, right: 0, textAlign: 'left', paddingRight: '8px' }}>
-                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex', alignItems: 'flex-start' }}>
-                    <strong style={{ display: 'inline-block', width: '75px', flexShrink: 0 }}>PO Number:</strong>
-                    <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{formData.poNumber || '-'}</span>
+                <div style={{ textAlign: 'left', marginTop: 16, marginBottom: 8, width: '100%' }}>
+                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex' }}>
+                    <span style={{ width: '80px', fontWeight: 'bold', flexShrink: 0 }}>PO Number:</span>
+                    <span style={{ flex: 1 }}>{formData.poNumber || '-'}</span>
                   </div>
-                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex', alignItems: 'flex-start' }}>
-                    <strong style={{ display: 'inline-block', width: '75px', flexShrink: 0 }}>Reference:</strong>
-                    <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{formData.referenceNumber || '-'}</span>
+                  <div style={{ fontSize: 12, marginBottom: 3, display: 'flex' }}>
+                    <span style={{ width: '80px', fontWeight: 'bold', flexShrink: 0 }}>Reference:</span>
+                    <span style={{ flex: 1 }}>{formData.referenceNumber || '-'}</span>
                   </div>
-                  <div style={{ fontSize: 11, marginTop: 3, marginBottom: 0, lineHeight: '1.4', wordBreak: 'break-word', overflowWrap: 'break-word', whiteSpace: 'normal' }}>The above PO number & reference must appear on all related correspondence shipping papers and invoices</div>
                 </div>
+                <div style={{ fontSize: 10, marginTop: 'auto', lineHeight: '1.5', textAlign: 'left', width: '100%' }}>The above PO number & reference must appear on all related correspondence, shipping papers and invoices</div>
               </div>
             </div>
 
@@ -423,7 +289,7 @@ const PurchaseOrderPreview = () => {
               <div className="border" style={{ marginTop: '24px', width: '100%', minHeight: '200px', padding: '12px', position: 'relative', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: 12, textAlign: 'left' }}>Authorization</div>
                 <div style={{ flex: 1, position: 'relative' }}>
-                  <div style={{ position: 'absolute', bottom: '50px', left: '50%', right: 0, display: 'flex', justifyContent: 'center', fontSize: 12, textAlign: 'center' }}>
+                  <div style={{ position: 'absolute', bottom: '50px', right: 0, fontSize: 12, textAlign: 'center', width: '50%' }}>
                     {formData.poDate ? new Date(formData.poDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '-'}
                   </div>
                 </div>

@@ -932,18 +932,6 @@ const PurchaseOrderForm = () => {
         setSgstRate('0');
         setIgstRate('18');
       }
-      // Calculate tax after setting rates
-      setTimeout(() => {
-        const subtotal = calculateSubtotal();
-        const sameState = isSameState();
-        if (sameState) {
-          const tax = (subtotal * 18) / 100; // 9% + 9%
-          setTaxAmount(tax);
-        } else {
-          const tax = (subtotal * 18) / 100; // 18%
-          setTaxAmount(tax);
-        }
-      }, 0);
     } else {
       setCgstRate('0');
       setSgstRate('0');
@@ -953,6 +941,8 @@ const PurchaseOrderForm = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.billToStateCode, formData.shipToStateCode, formData.billToGSTIN, formData.shipToGSTIN, taxEnabled, items]);
 
+
+
   const calculateTax = () => {
     if (!taxEnabled) {
       setTaxAmount(0);
@@ -960,19 +950,12 @@ const PurchaseOrderForm = () => {
     }
     
     const subtotal = calculateSubtotal();
-    const sameState = isSameState();
-    
-    if (sameState) {
-      // Intra-state: CGST 9% + SGST 9%
-      const tax = (subtotal * 18) / 100;
-      setTaxAmount(tax);
-      return tax;
-    } else {
-      // Inter-state: IGST 18%
-      const tax = (subtotal * 18) / 100;
-      setTaxAmount(tax);
-      return tax;
-    }
+    const cgst = (subtotal * (parseFloat(cgstRate) || 0)) / 100;
+    const sgst = (subtotal * (parseFloat(sgstRate) || 0)) / 100;
+    const igst = (subtotal * (parseFloat(igstRate) || 0)) / 100;
+    const tax = cgst + sgst + igst;
+    setTaxAmount(tax);
+    return tax;
   };
 
   const calculateTotal = () => {
@@ -1467,7 +1450,7 @@ const PurchaseOrderForm = () => {
             </div>
             {taxEnabled && (
               <div className="mb-4 text-sm text-gray-600">
-                {isSameState() ? 'Same State: CGST 9% + SGST 9%' : 'Different States: IGST 18%'}
+                {parseFloat(cgstRate) > 0 || parseFloat(sgstRate) > 0 ? `Same State: CGST ${cgstRate}% + SGST ${sgstRate}%` : parseFloat(igstRate) > 0 ? `Different States: IGST ${igstRate}%` : 'No tax applied'}
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -1479,10 +1462,9 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setCgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  className="w-full border rounded-md p-2"
                   placeholder="e.g., 9"
-                  readOnly={taxEnabled}
-                  disabled={taxEnabled}
+                  disabled={!taxEnabled}
                 />
               </div>
               <div>
@@ -1493,10 +1475,9 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setSgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  className="w-full border rounded-md p-2"
                   placeholder="e.g., 9"
-                  readOnly={taxEnabled}
-                  disabled={taxEnabled}
+                  disabled={!taxEnabled}
                 />
               </div>
               <div>
@@ -1507,10 +1488,9 @@ const PurchaseOrderForm = () => {
                   onChange={(e) => setIgstRate(e.target.value)}
                   min="0"
                   step="0.01"
-                  className={`w-full border rounded-md p-2 ${taxEnabled ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                  className="w-full border rounded-md p-2"
                   placeholder="e.g., 18"
-                  readOnly={taxEnabled}
-                  disabled={taxEnabled}
+                  disabled={!taxEnabled}
                 />
               </div>
               <div className="flex gap-2">
@@ -1526,7 +1506,6 @@ const PurchaseOrderForm = () => {
                   type="button"
                   onClick={() => { setCgstRate(''); setSgstRate(''); setIgstRate(''); setTaxAmount(0); }}
                   className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-md font-semibold"
-                  disabled={taxEnabled}
                 >
                   Clear
                 </button>
@@ -1590,8 +1569,24 @@ const PurchaseOrderForm = () => {
 
           
 
-          {/* Generate Document Button */}
-          <div className="fixed bottom-6 right-6">
+          {/* Generate Document Button + Clear All */}
+          <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                const confirmed = window.confirm('Clear all fields? This will reset the form.');
+                if (!confirmed) return;
+                clearBillToFields();
+                clearShipToFields();
+                clearRequisitionerDetailsFields();
+                clearAdditionalDetailsFields();
+                clearItemsFields();
+                clearTermsFields();
+              }}
+              className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-6 py-2 rounded-lg shadow hover:from-teal-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+            >
+              Clear All
+            </button>
             <button
               type="submit"
               className="bg-gradient-to-r from-teal-600 to-purple-800 text-white px-8 py-3 rounded-lg shadow-lg hover:from-teal-700 hover:to-purple-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transform hover:scale-105 transition-all duration-200"
