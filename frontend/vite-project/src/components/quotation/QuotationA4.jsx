@@ -677,38 +677,32 @@ const QuotationA4 = () => {
         </div>
       </div>
 
-      {/* Download button (excluded from PDF) */}
-      <div className="fixed bottom-4 right-4 z-50 no-print">
+      {/* Action buttons (excluded from PDF) */}
+      <div className="fixed bottom-6 right-6 z-50 no-print flex flex-col gap-3">
         <button
           onClick={handleDownloadPdf}
           disabled={isDownloading}
-          className="flex items-center space-x-2 bg-sky-700 hover:bg-sky-800 text-white px-4 py-2 rounded shadow-md disabled:opacity-60 transition"
+          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-          >
-            <path
-              fillRule="evenodd"
-              d="M3 3.5A1.5 1.5 0 014.5 2h11A1.5 1.5 0 0117 3.5V9a1 1 0 11-2 0V4H5v12h5a1 1 0 110 2H4.5A1.5 1.5 0 013 18.5v-15z"
-              clipRule="evenodd"
-            />
-            <path d="M9 7a1 1 0 012 0v5.586l1.293-1.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 12.586V7z" />
-          </svg>
-          <span>{isDownloading ? "Preparing..." : "Download as PDF"}</span>
+          {isDownloading ? 'Generating PDF...' : 'Download PDF'}
         </button>
-        
-        {/* Back to Home Button */}
+        <button
+          onClick={() => navigate('/quotation-form')}
+          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors"
+        >
+          Edit Preview
+        </button>
+        <button
+          onClick={() => navigate('/quotation-form')}
+          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-gray-600 hover:bg-gray-700 transition-colors"
+        >
+          Create New Quotation
+        </button>
         <button
           onClick={() => navigate('/')}
-          className="flex items-center justify-center space-x-2 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded shadow-md transition mt-4"
+          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-slate-800 hover:bg-slate-900 transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
-          </svg>
-          <span>Back to Home</span>
+          Back to Home
         </button>
       </div>
     </>

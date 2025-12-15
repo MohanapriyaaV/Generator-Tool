@@ -596,18 +596,19 @@ const QuotationForm = () => {
       return { cgst: 0, sgst: 0, igst: 0, cgstAmount: 0, sgstAmount: 0, igstAmount: 0, totalTax: 0 };
     }
     
-    const sameState = isSameState();
+    const cgstAmount = (subtotal * (parseFloat(globalTaxes.cgst) || 0)) / 100;
+    const sgstAmount = (subtotal * (parseFloat(globalTaxes.sgst) || 0)) / 100;
+    const igstAmount = (subtotal * (parseFloat(globalTaxes.igst) || 0)) / 100;
     
-    if (sameState) {
-      // Intra-state: CGST 9% + SGST 9%
-      const cgst = (subtotal * 9) / 100;
-      const sgst = (subtotal * 9) / 100;
-      return { cgst: 9, sgst: 9, igst: 0, cgstAmount: cgst, sgstAmount: sgst, igstAmount: 0, totalTax: cgst + sgst };
-    } else {
-      // Inter-state: IGST 18%
-      const igst = (subtotal * 18) / 100;
-      return { cgst: 0, sgst: 0, igst: 18, cgstAmount: 0, sgstAmount: 0, igstAmount: igst, totalTax: igst };
-    }
+    return { 
+      cgst: globalTaxes.cgst, 
+      sgst: globalTaxes.sgst, 
+      igst: globalTaxes.igst, 
+      cgstAmount, 
+      sgstAmount, 
+      igstAmount, 
+      totalTax: cgstAmount + sgstAmount + igstAmount 
+    };
   };
 
   // Auto-update tax when addresses change
@@ -1310,9 +1311,9 @@ const QuotationForm = () => {
                     <label className="block text-sm font-medium text-gray-600 mb-1">CGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2 bg-gray-50" 
-                      value={taxEnabled ? (autoTax.cgst || '') : ''} 
-                      readOnly
+                      className="w-full border rounded-md p-2" 
+                      value={globalTaxes.cgst || ''} 
+                      onChange={(e) => setGlobalTaxes(prev => ({ ...prev, cgst: parseFloat(e.target.value) || 0 }))}
                       disabled={!taxEnabled}
                     />
                   </div>
@@ -1320,9 +1321,9 @@ const QuotationForm = () => {
                     <label className="block text-sm font-medium text-gray-600 mb-1">SGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2 bg-gray-50" 
-                      value={taxEnabled ? (autoTax.sgst || '') : ''} 
-                      readOnly
+                      className="w-full border rounded-md p-2" 
+                      value={globalTaxes.sgst || ''} 
+                      onChange={(e) => setGlobalTaxes(prev => ({ ...prev, sgst: parseFloat(e.target.value) || 0 }))}
                       disabled={!taxEnabled}
                     />
                   </div>
@@ -1330,16 +1331,16 @@ const QuotationForm = () => {
                     <label className="block text-sm font-medium text-gray-600 mb-1">IGST (%)</label>
                     <input 
                       type="number" 
-                      className="w-full border rounded-md p-2 bg-gray-50" 
-                      value={taxEnabled ? (autoTax.igst || '') : ''} 
-                      readOnly
+                      className="w-full border rounded-md p-2" 
+                      value={globalTaxes.igst || ''} 
+                      onChange={(e) => setGlobalTaxes(prev => ({ ...prev, igst: parseFloat(e.target.value) || 0 }))}
                       disabled={!taxEnabled}
                     />
                   </div>
                 </div>
                 {taxEnabled && (
                   <div className="mt-2 text-xs text-gray-600">
-                    {isSameState() ? 'Same State: CGST 9% + SGST 9%' : 'Different States: IGST 18%'}
+                    {globalTaxes.cgst > 0 || globalTaxes.sgst > 0 ? `Same State: CGST ${globalTaxes.cgst}% + SGST ${globalTaxes.sgst}%` : globalTaxes.igst > 0 ? `Different States: IGST ${globalTaxes.igst}%` : 'No tax applied'}
                   </div>
                 )}
               </div>
