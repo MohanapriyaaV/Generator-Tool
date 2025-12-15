@@ -373,7 +373,26 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
   return (
     <>
       
-      <div className="invoice-preview" ref={invoiceRef}>
+      <div className="invoice-preview" ref={invoiceRef} style={{
+        position: 'relative'
+      }}>
+        {/* Watermark overlay for better opacity control */}
+        <div style={{
+          position: 'absolute',
+          top: '25%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '150px',
+          height: '150px',
+          backgroundImage: 'url(/WaterMark.png)',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center center',
+          backgroundSize: 'contain',
+          opacity: 0.6,
+          pointerEvents: 'none',
+          zIndex: 0
+        }}></div>
+        <div style={{ position: 'relative', zIndex: 1 }}>
       {/* Header with Logo and Company Name */}
       <div className="invoice-header">
         <div className="invoice-logo">
@@ -494,7 +513,7 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
                   <tr>
                     <td>
                       <span className="field-label">Invoice No.</span>
-                      <span className="field-value">{data.invoiceNumber}</span>
+                      <span className="field-value">{ data.invoiceNumber}</span>
                     </td>
                     <td>
                       <span className="field-label">Invoice Date</span>
@@ -890,6 +909,7 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
 
       {/* Footer */}
       <div className="invoice-footer">This is a Computer Generated Invoice</div>
+        </div>
     </div>       
     </>
   );

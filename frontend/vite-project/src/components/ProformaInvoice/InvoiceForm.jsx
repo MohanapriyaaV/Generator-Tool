@@ -1113,15 +1113,30 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
       
       console.log('🔍 [ProformaInvoice] Checking uniqueness for:', checkNumber);
       
-      // Get current invoice ID if editing (to exclude it from uniqueness check)
+      // Get current invoice ID and number if editing (to exclude it from uniqueness check)
       const currentInvoiceId = initialData?._id || location.state?.initialData?._id;
+      const currentInvoiceNumber = initialData?.invoiceNumber || location.state?.initialData?.invoiceNumber;
+      
+      console.log('🔍 [ProformaInvoice] Current invoice being edited:', {
+        currentInvoiceId,
+        currentInvoiceNumber,
+        checkNumber
+      });
       
       const existing = allInvoices.find(inv => {
-        // Skip the current invoice if editing
+        // Skip the current invoice if editing (by ID or by number)
         if (currentInvoiceId && inv._id === currentInvoiceId) {
+          console.log('⏭️ [ProformaInvoice] Skipping current invoice by ID:', inv._id);
           return false;
         }
+        
+        // Also skip if the invoice number matches the original invoice number being edited
         const invNo = inv.invoiceNumber || inv.fullInvoiceData?.invoiceNumber || '';
+        if (currentInvoiceNumber && invNo === currentInvoiceNumber && invNo === checkNumber) {
+          console.log('⏭️ [ProformaInvoice] Skipping current invoice by number:', invNo);
+          return false;
+        }
+        
         return invNo === checkNumber;
       });
 
