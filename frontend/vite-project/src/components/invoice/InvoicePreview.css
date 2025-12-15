@@ -1,0 +1,358 @@
+/* Invoice Preview Styles */
+.invoice-preview {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 16px 32px;
+}
+
+.invoice-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+@media (min-width: 1024px) {
+  .invoice-container {
+    flex-direction: row;
+  }
+}
+
+.invoice-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.invoice-document {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  width: 794px;
+  min-height: 1123px;
+  padding: 40px;
+  box-sizing: border-box;
+}
+
+/* Header Section */
+.invoice-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.invoice-logo {
+  flex: 1;
+}
+
+.logo-image {
+  width: 200px;
+  margin-bottom: 10px;
+}
+
+.company-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.invoice-title {
+  text-align: center;
+  flex: 1;
+}
+
+.invoice-main-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Top Section with Address and Meta Info */
+.invoice-top-section {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 11px;
+}
+
+.invoice-top-section td {
+  border: 1px solid #000;
+  padding: 4px;
+  vertical-align: top;
+}
+
+.address-section {
+  width: 70%;
+  border-bottom: 1px solid #000;
+}
+
+.address-section div {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.meta-info-section {
+  width: 30%;
+  vertical-align: top;
+}
+
+/* Address Table */
+.address-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  border: 1px solid #000;
+}
+
+.address-table td {
+  border: 1px solid #000;
+  padding: 8px;
+  vertical-align: top;
+}
+
+.company-info-block {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.address-block {
+  margin-bottom: 5px;
+}
+
+.italic-label {
+  font-style: italic;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+
+.buyer-name {
+  font-weight: bold;
+}
+
+/* Meta Info Table */
+.meta-info-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  border: none;
+}
+
+.meta-info-table td {
+  border: 1px solid #000;
+  padding: 4px;
+  vertical-align: top;
+  border-top: none;
+  border-left: none;
+}
+
+.meta-info-table tr:last-child td {
+  border-bottom: none;
+}
+
+.meta-info-table tr td:last-child {
+  border-right: none;
+}
+
+.meta-row-1 {
+  height: 28px;
+}
+
+.meta-row-2 {
+  height: 28px;
+}
+
+.meta-row-3 {
+  height: 28px;
+}
+
+.meta-row-4 {
+  height: 28px;
+}
+
+.meta-row-5 {
+  height: 45px;
+}
+
+.meta-row-6 {
+  height: 28px;
+}
+
+.meta-row-7 {
+  height: 65px;
+}
+
+.field-label {
+  font-weight: bold;
+  font-size: 7px;
+}
+
+.field-value {
+  font-weight: bold;
+  font-size: 8px;
+}
+
+/* Items Table */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 11px;
+  border: 1px solid #000;
+}
+
+.items-table th,
+.items-table td {
+  border: 1px solid #000;
+  padding: 6px;
+  text-align: left;
+}
+
+.items-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.bold-cell {
+  font-weight: bold;
+}
+
+.total-row {
+  background-color: #f5f5f5;
+}
+
+.amount-words-row td {
+  position: relative;
+}
+
+.amount-words-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.amount-label {
+  font-weight: bold;
+  font-size: 10px;
+}
+
+.amount-value {
+  font-weight: bold;
+}
+
+.eoe-text {
+  font-size: 10px;
+}
+
+/* Footer */
+.invoice-footer {
+  font-size: 10px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* Actions Sidebar */
+.actions-sidebar {
+  width: 320px;
+}
+
+@media (max-width: 1023px) {
+  .actions-sidebar {
+    width: 100%;
+  }
+}
+
+.actions-panel {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  position: sticky;
+  top: 32px;
+}
+
+.actions-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.actions-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-button {
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.action-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.download-button {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.download-button:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.edit-button {
+  background-color: #10b981;
+  color: white;
+}
+
+.edit-button:hover {
+  background-color: #059669;
+}
+
+.create-button {
+  background-color: #6b7280;
+  color: white;
+}
+
+.create-button:hover {
+  background-color: #4b5563;
+}
+
+.home-button {
+  background-color: #374151;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 15px;
+}
+
+.home-button:hover {
+  background-color: #1f2937;
+}
+
+.home-icon {
+  width: 20px;
+  height: 20px;
+}

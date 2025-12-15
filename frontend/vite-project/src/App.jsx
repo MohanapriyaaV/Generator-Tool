@@ -11,6 +11,7 @@ import InvoiceFormSinglePage from './components/invoice/InvoiceFormSinglePage';
 import QuotationHome from './components/quotation/QuotationHome';
 import InvoiceForm from './components/ProformaInvoice/InvoiceForm';
 import InvoicePreview from './components/ProformaInvoice/InvoicePreview';
+import InvoicePreviewComponent from './components/invoice/InvoicePreview';
 import CustomerForm from './components/invoice/CustomerForm';
 import InvoiceHistory from './components/history/InvoiceHistory';
 import QuotationHistory from './components/history/QuotationHistory';
@@ -392,6 +393,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/invoice" element={<InvoiceFormSinglePage />} />
+            <Route path="/invoice-preview-new" element={<InvoicePreviewComponent />} />
             <Route path="/quotation" element={<QuotationHome />} />
             <Route path="/quotation-home" element={<QuotationHome />} />
             <Route path="/quotation-form" element={<QuotationForm />} />
