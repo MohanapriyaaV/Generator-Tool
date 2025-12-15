@@ -1222,6 +1222,7 @@ const InvoiceFormSinglePage = () => {
   };
 
   // Calculate grand totals
+  const grandTotalBase = items.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.price)), 0);
   const grandTotalTax = taxEnabled ? items.reduce((sum, item) => sum + Number(getTotalTaxAmount(item)), 0) : 0;
   const grandTotalAmount = items.reduce((sum, item) => sum + Number(getTotalAmount(item)), 0);
 
@@ -2020,10 +2021,34 @@ const InvoiceFormSinglePage = () => {
             Clear All
           </button>
           <button
-            onClick={() => setShowInvoice(true)}
+            onClick={() => {
+              // Navigate to new invoice preview
+              const tax = {
+                cgst: isSameState() ? 9 : 0,
+                sgst: isSameState() ? 9 : 0,
+                igst: isSameState() ? 0 : 18
+              };
+              navigate('/invoice-preview-new', { 
+                state: { 
+                  formData: {
+                    ...formData,
+                    invoiceNumber: actualInvoiceNumber,
+                    invoiceDate: actualInvoiceDate
+                  }, 
+                  items,
+                  tax
+                } 
+              });
+            }}
             className="bg-gradient-to-r from-violet-600 to-violet-800 text-white px-8 py-3 rounded-lg shadow-lg hover:from-violet-700 hover:to-violet-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transform hover:scale-105 transition-all duration-200"
           >
-            Generate Invoice
+            Preview Invoice
+          </button>
+          <button
+            onClick={() => setShowInvoice(true)}
+            className="bg-gradient-to-r from-green-600 to-green-800 text-white px-8 py-3 rounded-lg shadow-lg hover:from-green-700 hover:to-green-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transform hover:scale-105 transition-all duration-200"
+          >
+            Generate Invoice (Old)
           </button>
         </div>
       </div>
