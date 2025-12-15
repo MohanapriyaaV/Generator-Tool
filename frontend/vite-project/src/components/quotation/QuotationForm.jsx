@@ -1064,7 +1064,7 @@ const QuotationForm = () => {
               <h3 className="text-lg font-semibold text-gray-800">Quotation For</h3>
               <button
                 onClick={clearQuotationFor}
-                className="text-sm text-gray-500 hover:text-gray-800 border px-3 py-1 rounded-md"
+                className="bg-gradient-to-r from-sky-600 to-indigo-600 text-white px-3 py-1 rounded-md shadow hover:from-sky-700 hover:to-indigo-700"
               >
                 Clear
               </button>

@@ -184,28 +184,6 @@ export const generatePdfFromData = (data, isGeneratingPDF, onDownloadStateChange
       hasOnDownloadStateChange: !!onDownloadStateChange 
     });
 
-    const imgData = canvas.toDataURL("image/png");
-
-    // Create PDF
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-
-    // Calculate scaling so image fits exactly into ONE page height
-    const imgProps = pdf.getImageProperties(imgData);
-    const imgWidthMM = pdfWidth;
-    const imgHeightMM = (imgProps.height * imgWidthMM) / imgProps.width;
-
-    // If content is too tall → scale down to fit one page
-    let finalHeight = imgHeightMM;
-    let finalWidth = imgWidthMM;
-
-    if (imgHeightMM > pdfHeight) {
-      const scale = pdfHeight / imgHeightMM;
-      finalHeight = imgHeightMM * scale;
-      finalWidth = imgWidthMM * scale;
-    }
-
     try {
       console.log('Starting PDF generation...');
       if (onDownloadStateChange) onDownloadStateChange(true);
