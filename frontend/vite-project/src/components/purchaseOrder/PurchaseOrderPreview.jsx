@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.jpg';
 import { generatePurchaseOrderPDF } from '../../services/purchaseOrderPdfGenerator';
-import { createPurchaseOrder } from '../../services/api';
 import './PurchaseOrderPreview.css';
 
 const PurchaseOrderPreview = () => {
@@ -10,7 +9,6 @@ const PurchaseOrderPreview = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const previewRef = useRef();
 
   useEffect(() => {
@@ -20,58 +18,6 @@ const PurchaseOrderPreview = () => {
       navigate('/purchase-order');
     }
   }, [location.state, navigate]);
-
-  useEffect(() => {
-    const savePurchaseOrder = async () => {
-      if (!data || isSaved) return;
-      
-      try {
-        const { formData, items, tax } = data;
-        const dbData = {
-          poNumber: formData.poNumber,
-          poDate: formData.poDate,
-          totalAmount: grandTotal,
-          referenceNumber: formData.referenceNumber || '',
-          projectName: formData.projectName || '',
-          billToAddress: {
-            clientName: formData.billToClientName || '',
-            companyName: formData.billToCompanyName || '',
-            street: formData.billToStreet || '',
-            apartment: formData.billToApartment || '',
-            city: formData.billToCity || '',
-            zipCode: formData.billToZipCode || '',
-            countryCode: formData.billToCountryCode || '',
-            stateCode: formData.billToStateCode || '',
-            pan: formData.billToPAN || '',
-            gstin: formData.billToGSTIN || '',
-            phoneNumber: formData.billToPhoneNumber || ''
-          },
-          shipToAddress: {
-            clientName: formData.shipToClientName || '',
-            companyName: formData.shipToCompanyName || '',
-            street: formData.shipToStreet || '',
-            apartment: formData.shipToApartment || '',
-            city: formData.shipToCity || '',
-            zipCode: formData.shipToZipCode || '',
-            countryCode: formData.shipToCountryCode || '',
-            stateCode: formData.shipToStateCode || '',
-            pan: formData.shipToPAN || '',
-            gstin: formData.shipToGSTIN || '',
-            phoneNumber: formData.shipToPhoneNumber || ''
-          },
-          fullPurchaseOrderData: { formData, items, tax }
-        };
-        
-        await createPurchaseOrder(dbData);
-        console.log('✅ Purchase Order saved to database');
-        setIsSaved(true);
-      } catch (error) {
-        console.error('❌ Error saving Purchase Order:', error);
-      }
-    };
-    
-    savePurchaseOrder();
-  }, [data, isSaved]);
 
   if (!data) {
     return (
@@ -117,23 +63,7 @@ const PurchaseOrderPreview = () => {
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
     const fileName = `PO_${formData.poNumber || 'Document'}.pdf`;
-    const blob = await generatePurchaseOrderPDF(previewRef, fileName);
-    
-    if (blob) {
-      try {
-        const { uploadPdfToS3, updatePurchaseOrderS3Url } = await import('../../services/api.js');
-        const uploadResult = await uploadPdfToS3(blob, fileName, 'PurchaseOrder');
-        console.log('✅ PO PDF uploaded to S3:', uploadResult.url);
-        
-        if (formData.poNumber) {
-          await updatePurchaseOrderS3Url(formData.poNumber, uploadResult.url);
-          console.log('✅ Database updated with S3 URL');
-        }
-      } catch (error) {
-        console.error('❌ Error uploading PDF to S3:', error);
-      }
-    }
-    
+    await generatePurchaseOrderPDF(previewRef, fileName);
     setIsGeneratingPDF(false);
   };
 
