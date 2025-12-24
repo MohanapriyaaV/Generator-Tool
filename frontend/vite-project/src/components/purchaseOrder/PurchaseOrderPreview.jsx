@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import logo from '../../assets/logo.jpg';
 import { generatePurchaseOrderPDF } from '../../services/purchaseOrderPdfGenerator';
+import { uploadPdfToS3, createPurchaseOrder } from '../../services/api';
 import './PurchaseOrderPreview.css';
 
 const PurchaseOrderPreview = () => {
@@ -62,9 +63,72 @@ const PurchaseOrderPreview = () => {
 
   const handleDownloadPDF = async () => {
     setIsGeneratingPDF(true);
-    const fileName = `PO_${formData.poNumber || 'Document'}.pdf`;
-    await generatePurchaseOrderPDF(previewRef, fileName);
+    try {
+      const fileName = `PO_${formData.poNumber || 'Document'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      const blob = await generatePurchaseOrderPDF(previewRef, fileName);
+      
+      if (blob) {
+        try {
+          console.log('Uploading PO PDF to S3...');
+          const uploadResult = await uploadPdfToS3(blob, fileName, 'PurchaseOrder');
+          console.log('✅ PDF uploaded to S3:', uploadResult.url);
+          
+          // Prepare purchase order data for database
+          // Use current date/time for accurate timestamp
+          const currentDateTime = new Date().toISOString();
+          const payload = {
+            poNumber: formData.poNumber || '',
+            poDate: currentDateTime, // Use current date/time instead of date-only field
+            totalAmount: Number(grandTotal) || 0,
+            referenceNumber: formData.referenceNumber || '',
+            projectName: formData.projectName || '',
+            billToAddress: {
+              clientName: formData.billToClientName || '',
+              companyName: formData.billToCompanyName || '',
+              street: formData.billToStreet || '',
+              apartment: formData.billToApartment || '',
+              city: formData.billToCity || '',
+              zipCode: formData.billToZipCode || '',
+              country: formData.billToCountryCode || '',
+              state: formData.billToStateCode || '',
+              pan: formData.billToPAN || '',
+              gstin: formData.billToGSTIN || '',
+              phoneNumber: formData.billToPhoneNumber || '',
+            },
+            shipToAddress: {
+              clientName: formData.shipToClientName || '',
+              companyName: formData.shipToCompanyName || '',
+              street: formData.shipToStreet || '',
+              apartment: formData.shipToApartment || '',
+              city: formData.shipToCity || '',
+              zipCode: formData.shipToZipCode || '',
+              country: formData.shipToCountryCode || '',
+              state: formData.shipToStateCode || '',
+              phoneNumber: formData.shipToPhoneNumber || '',
+            },
+            s3Url: uploadResult.url || '',
+            fullPurchaseOrderData: { formData, items, tax }
+          };
+          
+          try {
+            const created = await createPurchaseOrder(payload);
+            console.log('✅ Purchase order saved:', created.purchaseOrder?._id || created.purchaseOrder);
+            alert('Purchase order saved successfully!');
+          } catch (dbError) {
+            console.warn('⚠️ Could not save purchase order to DB:', dbError.message || dbError);
+            alert('PDF generated but could not save to database. Please try again.');
+          }
+        } catch (uploadError) {
+          console.error('❌ Error uploading PO PDF to S3:', uploadError);
+          alert('PDF generated but could not upload to S3. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    } finally {
     setIsGeneratingPDF(false);
+    }
   };
 
   const handleEditPreview = () => {

@@ -462,6 +462,24 @@ export const uploadPdfToS3 = async (pdfBlob, fileName, folder) => {
   }
 };
 
+// Get signed URL for an existing S3 object
+export const getSignedUrl = async (urlOrKey) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload/signed-url?${urlOrKey.startsWith('http') ? `url=${encodeURIComponent(urlOrKey)}` : `key=${encodeURIComponent(urlOrKey)}`}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.url;
+  } catch (error) {
+    console.error('Error getting signed URL:', error);
+    throw error;
+  }
+};
+
 // ========== PURCHASE ORDER API ==========
 
 // Create a new purchase order

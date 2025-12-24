@@ -1,0 +1,231 @@
+/* Quotation A4 Layout - Dynamic scaling for single page */
+
+#quotation-pdf {
+  width: 794px; /* A4 width in pixels at 96 DPI */
+  min-height: 1123px; /* A4 height in pixels at 96 DPI */
+  box-sizing: border-box;
+  padding: 40px;
+  overflow: hidden;
+}
+
+/* Header section - fixed size */
+.quotation-header {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+
+.quotation-header h1 {
+  margin: 0;
+  line-height: 1;
+}
+
+.quotation-header h2 {
+  margin: 0;
+  line-height: 1.2;
+}
+
+.quotation-header p {
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Quotation info section - compact */
+.quotation-info-section {
+  margin-bottom: 12px;
+}
+
+.quotation-info-section p {
+  margin: 0 0 2px 0;
+  line-height: 1.4;
+}
+
+.quotation-info-section h3 {
+  margin: 0 0 4px 0;
+}
+
+/* Items table section */
+.quotation-items-section {
+  margin-bottom: 12px;
+}
+
+.quotation-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+  table-layout: fixed;
+  display: table;
+}
+
+/* Compact table cells */
+.quotation-items-table th,
+.quotation-items-table td {
+  padding: 3px 4px !important;
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+/* Override inline margins to match PO style */
+#quotation-pdf p[style*="marginBottom"] {
+  margin-bottom: 2px !important;
+}
+
+#quotation-pdf .mb-1 {
+  margin-bottom: 4px !important;
+}
+
+#quotation-pdf .mb-4 {
+  margin-bottom: 12px !important;
+}
+
+#quotation-pdf .mt-2 {
+  margin-top: 8px !important;
+}
+
+#quotation-pdf .mt-12 {
+  margin-top: 48px !important;
+}
+
+#quotation-pdf .-mt-1 {
+  margin-top: -4px !important;
+}
+
+#quotation-pdf .pb-2 {
+  padding-bottom: 8px !important;
+}
+
+#quotation-pdf .space-y-\[1px\] > * + * {
+  margin-top: 2px !important;
+}
+
+/* Footer sections */
+.quotation-footer-section {
+  margin-bottom: 12px;
+}
+
+/* Bank details - compact */
+.quotation-bank-details {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.quotation-bank-details p {
+  margin: 0 0 2px 0 !important;
+  line-height: 1.4 !important;
+}
+
+.quotation-bank-details h3,
+.quotation-bank-details p strong {
+  margin: 0 0 4px 0;
+}
+
+/* Terms & Conditions - compact */
+.quotation-terms {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+
+.quotation-terms p {
+  margin: 0 0 4px 0;
+}
+
+.quotation-terms ol {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.quotation-terms li {
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+/* Signature section - compact */
+.quotation-signature {
+  margin-bottom: 12px;
+  font-size: 11px;
+}
+
+.quotation-signature p {
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Footer addresses - very compact */
+.quotation-footer-addresses {
+  font-size: 10px;
+  line-height: 1.3;
+  margin-bottom: 8px;
+  padding-top: 8px;
+}
+
+.quotation-footer-contact {
+  font-size: 10px;
+  line-height: 1.3;
+  margin: 0;
+}
+
+/* Responsive adjustments based on item count */
+#quotation-pdf[data-item-count="1"] .quotation-items-table th,
+#quotation-pdf[data-item-count="1"] .quotation-items-table td {
+  font-size: 10px !important;
+  padding: 4px 6px !important;
+}
+
+#quotation-pdf[data-item-count="2"] .quotation-items-table th,
+#quotation-pdf[data-item-count="2"] .quotation-items-table td {
+  font-size: 9.5px !important;
+  padding: 3.5px 5px !important;
+}
+
+#quotation-pdf[data-item-count="3"] .quotation-items-table th,
+#quotation-pdf[data-item-count="3"] .quotation-items-table td {
+  font-size: 9px !important;
+  padding: 3px 4px !important;
+}
+
+#quotation-pdf[data-item-count="4"] .quotation-items-table th,
+#quotation-pdf[data-item-count="4"] .quotation-items-table td {
+  font-size: 8.5px !important;
+  padding: 2.5px 3px !important;
+}
+
+#quotation-pdf[data-item-count="5"] .quotation-items-table th,
+#quotation-pdf[data-item-count="5"] .quotation-items-table td {
+  font-size: 8px !important;
+  padding: 2px 3px !important;
+}
+
+/* For 6+ items, make even more compact */
+#quotation-pdf[data-item-count="6"] .quotation-items-table th,
+#quotation-pdf[data-item-count="6"] .quotation-items-table td,
+#quotation-pdf[data-item-count="7"] .quotation-items-table th,
+#quotation-pdf[data-item-count="7"] .quotation-items-table td,
+#quotation-pdf[data-item-count="8"] .quotation-items-table th,
+#quotation-pdf[data-item-count="8"] .quotation-items-table td,
+#quotation-pdf[data-item-count="9"] .quotation-items-table th,
+#quotation-pdf[data-item-count="9"] .quotation-items-table td,
+#quotation-pdf[data-item-count="10"] .quotation-items-table th,
+#quotation-pdf[data-item-count="10"] .quotation-items-table td {
+  font-size: 7.5px !important;
+  padding: 2px 2px !important;
+  line-height: 1.1 !important;
+}
+
+/* Print media adjustments */
+@media print {
+  #quotation-pdf {
+    min-height: 297mm !important;
+    width: 210mm !important;
+    padding: 15mm !important;
+  }
+
+  .quotation-items-table {
+    font-size: 9px !important;
+  }
+
+  .quotation-items-table th,
+  .quotation-items-table td {
+    padding: 3px 4px !important;
+    font-size: 8.5px !important;
+  }
+}
+

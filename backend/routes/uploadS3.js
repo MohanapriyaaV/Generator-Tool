@@ -42,9 +42,16 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     const uploadResult = await s3.upload(params).promise();
 
+    // Generate a signed URL (valid for 7 days)
+    const signedUrl = s3.getSignedUrl('getObject', {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: uploadResult.Key,
+      Expires: 60 * 60 * 24 * 7 // 7 days in seconds
+    });
+
     return res.json({
       message: "File uploaded successfully",
-      url: uploadResult.Location,
+      url: signedUrl, // Return signed URL instead of object URL
       key: uploadResult.Key,
     });
   } catch (error) {
@@ -100,14 +107,116 @@ router.post("/upload-pdf", upload.single("file"), async (req, res) => {
 
     const uploadResult = await s3.upload(params).promise();
 
+    // Generate a signed URL (valid for 7 days)
+    const signedUrl = s3.getSignedUrl('getObject', {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: uploadResult.Key,
+      Expires: 60 * 60 * 24 * 7 // 7 days in seconds
+    });
+
     return res.json({
       message: "PDF uploaded successfully",
-      url: uploadResult.Location,
+      url: signedUrl, // Return signed URL instead of object URL
       key: uploadResult.Key,
       folder: folder,
     });
   } catch (error) {
     console.error("❌ S3 PDF Upload Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Helper function to extract S3 key from URL
+const extractKeyFromUrl = (url) => {
+  if (!url) return null;
+  
+  try {
+    // If it's already a key (no http/https), return as is
+    if (!url.startsWith('http')) {
+      return decodeURIComponent(url);
+    }
+    
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    
+    // Remove leading slash and extract key
+    // Format: /bucket-name/key or /key
+    let key = pathname.startsWith('/') ? pathname.substring(1) : pathname;
+    
+    // Decode URL encoding
+    key = decodeURIComponent(key);
+    
+    // Remove bucket name if present (format: bucket-name/key)
+    const bucketName = process.env.AWS_BUCKET_NAME;
+    if (key.startsWith(bucketName + '/')) {
+      key = key.substring(bucketName.length + 1);
+    }
+    
+    // For signed URLs, the key might be in the X-Amz-Key query parameter
+    // But typically it's in the pathname
+    if (key.includes('?')) {
+      key = key.split('?')[0];
+    }
+    
+    return key || null;
+  } catch (error) {
+    console.error('Error extracting key from URL:', error);
+    // Try to extract from the URL string directly as fallback
+    try {
+      // For object URLs: https://bucket.s3.region.amazonaws.com/key
+      // For signed URLs: https://bucket.s3.region.amazonaws.com/key?signature
+      const match = url.match(/amazonaws\.com\/([^?]+)/);
+      if (match && match[1]) {
+        let key = decodeURIComponent(match[1]);
+        const bucketName = process.env.AWS_BUCKET_NAME;
+        if (key.startsWith(bucketName + '/')) {
+          key = key.substring(bucketName.length + 1);
+        }
+        return key;
+      }
+    } catch (e) {
+      console.error('Fallback key extraction failed:', e);
+    }
+    return null;
+  }
+};
+
+// Route to generate signed URL for an existing S3 object
+router.get("/signed-url", async (req, res) => {
+  try {
+    // Check if S3 is configured
+    if (!s3) {
+      return res.status(503).json({ 
+        error: "S3 is not configured. Please configure AWS credentials in .env file." 
+      });
+    }
+
+    const { key, url } = req.query;
+    
+    // Extract key from URL if key is not provided directly
+    let s3Key = key;
+    if (!s3Key && url) {
+      s3Key = extractKeyFromUrl(url);
+    }
+    
+    if (!s3Key) {
+      return res.status(400).json({ error: "Missing 'key' or 'url' parameter" });
+    }
+
+    // Generate a signed URL (valid for 1 hour for on-demand requests)
+    const signedUrl = s3.getSignedUrl('getObject', {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: s3Key,
+      Expires: 60 * 60 // 1 hour in seconds
+    });
+
+    return res.json({
+      url: signedUrl,
+      key: s3Key,
+      expiresIn: 3600 // seconds
+    });
+  } catch (error) {
+    console.error("❌ S3 Signed URL Generation Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
