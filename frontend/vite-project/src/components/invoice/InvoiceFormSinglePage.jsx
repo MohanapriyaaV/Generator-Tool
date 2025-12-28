@@ -2033,7 +2033,8 @@ const InvoiceFormSinglePage = () => {
                   formData: {
                     ...formData,
                     invoiceNumber: actualInvoiceNumber,
-                    invoiceDate: actualInvoiceDate
+                    invoiceDate: actualInvoiceDate,
+                    bankDetails: bankDetails
                   }, 
                   items,
                   tax

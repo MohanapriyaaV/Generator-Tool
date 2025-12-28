@@ -29,119 +29,224 @@
   border-radius: 8px;
   width: 794px;
   min-height: 1123px;
-  padding: 40px;
+  padding: 40px 50px;
   box-sizing: border-box;
+  font-size: 11px;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  position: relative;
 }
 
 /* Header Section */
 .invoice-header {
   display: flex;
-  align-items: flex-start;
-  margin-bottom: 20px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  width: 100%;
+  position: relative;
 }
 
 .invoice-logo {
-  flex: 1;
+  flex: 0 0 auto;
+  width: 160px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
 }
 
 .logo-image {
-  width: 200px;
-  margin-bottom: 10px;
+  max-width: 220px;
+  max-height: 200px;
+  object-fit: contain;
 }
 
-.company-name {
-  font-size: 16px;
-  font-weight: bold;
-  margin-bottom: 5px;
-}
-
-.invoice-title {
+.invoice-company-name {
+  position: absolute;
+  left: 55%;
+  transform: translateX(-50%);
   text-align: center;
-  flex: 1;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  width: auto;
+}
+
+.invoice-title-row {
+  text-align: center;
+  margin-bottom: 8px;
 }
 
 .invoice-main-title {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: bold;
-  margin: 0;
+  letter-spacing: 1.5px;
+  margin: 0 0 8px 0;
 }
 
-/* Top Section with Address and Meta Info */
-.invoice-top-section {
+/* Top Section Table */
+.invoice-top-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
-  font-size: 11px;
-}
-
-.invoice-top-section td {
-  border: 1px solid #000;
-  padding: 4px;
-  vertical-align: top;
-}
-
-.address-section {
-  width: 70%;
-  border-bottom: 1px solid #000;
-}
-
-.address-section div {
+  border-spacing: 0;
   margin: 0;
-  line-height: 1.2;
+  padding: 0;
+  font-size: 11px;
+  table-layout: fixed;
 }
 
-.meta-info-section {
-  width: 30%;
+.invoice-top-table tbody,
+.invoice-top-table tr {
+  margin: 0;
+  padding: 0;
+  border-spacing: 0;
+}
+
+.invoice-left, .invoice-right {
   vertical-align: top;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 0;
 }
 
-/* Address Table */
+.invoice-left {
+  width: 40%;
+  border: 1px solid #000;
+  border-right: none;
+}
+
+/* Inner table for left side addresses */
 .address-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
-  font-size: 11px;
-  border: 1px solid #000;
+  table-layout: fixed;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.address-table tbody,
+.address-table tr {
+  margin: 0;
+  padding: 0;
+  border-spacing: 0;
 }
 
 .address-table td {
-  border: 1px solid #000;
-  padding: 8px;
+  border: none;
+  border-bottom: 1px solid #000;
+  padding: 8px 10px; /* Increased padding to prevent text from touching borders */
+  font-size: 11px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
   vertical-align: top;
+  margin: 0;
+  line-height: 1.5; /* Increased line-height for better spacing */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+.address-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Separate classes for each address section */
+.from-address-cell {
+  height: 130px;
+}
+
+.consignee-address-cell {
+  height: 120px;
+}
+
+.buyer-address-cell {
+  height: 100px;
 }
 
 .company-info-block {
   font-weight: bold;
-  margin-bottom: 5px;
+  font-size: 11px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.company-info-block .company-name {
+  font-size: 12px;
+  font-weight: bold;
+  margin-bottom: 2px;
 }
 
 .address-block {
-  margin-bottom: 5px;
+  font-weight: normal;
+  font-size: 11px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.address-value {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
+  margin-top: 2px;
 }
 
 .italic-label {
   font-style: italic;
-  font-size: 10px;
-  margin-bottom: 5px;
-}
-
-.buyer-name {
   font-weight: bold;
+  display: block;
 }
 
-/* Meta Info Table */
+.italic-label-normal {
+  font-style: italic;
+  font-weight: normal;
+  display: block;
+}
+
+.invoice-right {
+  width: 60%;
+  border: 1px solid #000;
+  border-left: 1px solid #000;
+}
+
+/* Meta Info Table - 2 columns, each cell contains label and value */
 .meta-info-table {
   width: 100%;
+  height: 100%;
   border-collapse: collapse;
-  font-size: 10px;
-  border: none;
+  margin: 0;
+  padding: 0;
+  table-layout: fixed;
+  border-spacing: 0;
+}
+
+.meta-info-table tbody,
+.meta-info-table tr {
+  margin: 0;
+  padding: 0;
+  border-spacing: 0;
 }
 
 .meta-info-table td {
-  border: 1px solid #000;
-  padding: 4px;
+  border: none;
+  border-bottom: 1px solid #000;
+  border-right: 1px solid #000;
+  padding: 6px 10px; /* Increased padding to prevent text from touching borders */
   vertical-align: top;
-  border-top: none;
-  border-left: none;
+  text-align: left;
+  margin: 0;
+  line-height: 1.4; /* Increased line-height for better spacing */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
 }
 
 .meta-info-table tr:last-child td {
@@ -152,109 +257,486 @@
   border-right: none;
 }
 
-.meta-row-1 {
+/* Each cell is 50% width */
+.meta-info-table tr td {
+  width: 50%;
+}
+
+/* Specific row heights */
+.meta-info-table tr:nth-child(1) td {
   height: 28px;
 }
 
-.meta-row-2 {
+.meta-info-table tr:nth-child(2) td {
   height: 28px;
 }
 
-.meta-row-3 {
+.meta-info-table tr:nth-child(3) td {
   height: 28px;
 }
 
-.meta-row-4 {
+.meta-info-table tr:nth-child(4) td {
   height: 28px;
 }
 
-.meta-row-5 {
-  height: 45px;
+.meta-info-table tr:nth-child(5) td {
+  height: 68px;
 }
 
-.meta-row-6 {
+.meta-info-table tr:nth-child(6) td {
   height: 28px;
 }
 
-.meta-row-7 {
-  height: 65px;
+.meta-info-table tr:nth-child(7) td {
+  height: 128px;
 }
 
-.field-label {
+/* Label styling - normal weight */
+.meta-info-table .field-label {
+  display: block;
+  font-weight: normal;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+}
+
+/* Value styling - bold */
+.meta-info-table .field-value {
+  display: block;
   font-weight: bold;
-  font-size: 7px;
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
 }
 
-.field-value {
+.meta-info-table .bold-cell {
   font-weight: bold;
-  font-size: 8px;
 }
 
 /* Items Table */
 .items-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 20px;
+  border-spacing: 0;
+  margin-top: -1px;
+  margin-bottom: 0;
   font-size: 11px;
-  border: 1px solid #000;
-}
-
-.items-table th,
-.items-table td {
-  border: 1px solid #000;
-  padding: 6px;
-  text-align: left;
+  table-layout: fixed;
+  display: table;
+  vertical-align: top;
+  line-height: 1;
 }
 
 .items-table th {
-  background-color: #f5f5f5;
+  border: 1px solid #000;
+  padding: 8px 6px;
   font-weight: bold;
+  background: #fff;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  height: 35px;
+  margin: 0;
 }
 
-.text-center {
+.items-table th:nth-child(1) {
+  width: 47%;
+  text-align: left;
+}
+
+.items-table th:nth-child(2) {
+  width: 15%;
+}
+
+.items-table th:nth-child(3) {
+  width: 12%;
+}
+
+.items-table th:nth-child(4) {
+  width: 13%;
+}
+
+.items-table th:nth-child(5) {
+  width: 10%;
+}
+
+.items-table th:nth-child(6) {
+  width: 15%;
+}
+
+.items-table td {
+  border-left: 1px solid #000;
+  border-right: 1px solid #000;
+  border-top: none;
+  border-bottom: none;
+  padding: 6px 8px; /* Increased padding to prevent text from touching borders */
+  font-size: 11px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: middle;
+  line-height: 1.4; /* Slightly increased line-height for better spacing */
+  margin: 0;
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+.items-table tbody tr:first-child td {
+  border-top: 1px solid #000;
+}
+
+.items-table tbody tr:last-child td {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.items-table tbody tr td:first-child {
+  text-align: left;
+}
+
+.items-table tbody tr td:nth-child(2),
+.items-table tbody tr td:nth-child(3),
+.items-table tbody tr td:nth-child(4),
+.items-table tbody tr td:nth-child(5) {
   text-align: center;
 }
 
-.text-right {
+.items-table .text-right {
   text-align: right;
+}
+
+.items-table .total-row {
+  font-weight: bold;
+}
+
+.items-table .amount-words-row {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.items-table .amount-words-row td {
+  vertical-align: top;
+}
+
+.amount-label {
+  font-weight: normal;
+  display: inline;
+}
+
+.amount-value {
+  font-weight: bold;
+  display: inline;
 }
 
 .bold-cell {
   font-weight: bold;
 }
 
-.total-row {
-  background-color: #f5f5f5;
+/* Tax Summary Table */
+.tax-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-top: -1px;
+  margin-bottom: 0;
+  font-size: 11px;
+  table-layout: fixed;
+  display: table;
+  vertical-align: top;
+  line-height: 1;
 }
 
-.amount-words-row td {
+.tax-summary-table thead tr:first-child th {
+  border: 1px solid #000;
+  padding: 2px 6px;
+  font-weight: bold;
+  background: #fff;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  height: 10px;
+  margin: 0;
+}
+
+.tax-summary-table thead tr:nth-child(2) th {
+  border: 1px solid #000;
+  padding: 6px 6px;
+  font-weight: bold;
+  background: #fff;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.3;
+  height: 28px;
+  margin: 0;
+}
+
+/* Column-specific width classes for tax summary table */
+.tax-summary-table .col-hsn {
+  width: 30%;
+  min-width: 80px;
+}
+
+.tax-summary-table .col-taxable-value {
+  width: 10%;
+  min-width: 100px;
+}
+
+/* Intra-state columns (7 columns total) */
+.tax-summary-table .col-cgst-rate {
+  width: 10%;
+  min-width: 60px;
+}
+
+.tax-summary-table .col-cgst-amount {
+  width: 10%;
+  min-width: 100px;
+}
+
+.tax-summary-table .col-sgst-rate {
+  width: 10%;
+  min-width: 60px;
+}
+
+.tax-summary-table .col-sgst-amount {
+  width: 10%;
+  min-width: 100px;
+}
+
+.tax-summary-table .col-total-tax {
+  width: 10%;
+  min-width: 100px;
+}
+
+/* Inter-state columns (5 columns total) */
+.tax-summary-table .col-igst-rate {
+  width: 10%;
+  min-width: 60px;
+}
+
+.tax-summary-table .col-igst-amount {
+  width: 15%;
+  min-width: 120px;
+}
+
+/* When inter-state, adjust total tax width */
+.tax-summary-table:has(.col-igst-rate) .col-total-tax {
+  width: 15%;
+  min-width: 120px;
+}
+
+.tax-summary-table td {
+  border-left: 1px solid #000;
+  border-right: 1px solid #000;
+  border-top: none;
+  border-bottom: none;
+  padding: 6px 8px; /* Increased padding to prevent text from touching borders */
+  font-size: 11px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: middle;
+  line-height: 1.4; /* Increased line-height for better spacing */
+  text-align: center;
+  margin: 0;
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+.tax-summary-table tbody tr:first-child td {
+  border-top: 1px solid #000;
+  margin-top: 0;
+  padding-top: 4px;
+}
+
+.tax-summary-table tbody tr:last-child td {
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  margin-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.tax-summary-table td:first-child {
+  text-align: left;
+}
+
+.tax-summary-table .text-right {
+  text-align: right;
+}
+
+/* Column-specific text alignment - override default center alignment */
+.tax-summary-table td.col-hsn,
+.tax-summary-table th.col-hsn {
+  text-align: left;
+}
+
+.tax-summary-table td.col-taxable-value,
+.tax-summary-table th.col-taxable-value,
+.tax-summary-table td.col-cgst-amount,
+.tax-summary-table th.col-cgst-amount,
+.tax-summary-table td.col-sgst-amount,
+.tax-summary-table th.col-sgst-amount,
+.tax-summary-table td.col-igst-amount,
+.tax-summary-table th.col-igst-amount,
+.tax-summary-table td.col-total-tax,
+.tax-summary-table th.col-total-tax {
+  text-align: right;
+}
+
+.tax-summary-table td.col-cgst-rate,
+.tax-summary-table th.col-cgst-rate,
+.tax-summary-table td.col-sgst-rate,
+.tax-summary-table th.col-sgst-rate,
+.tax-summary-table td.col-igst-rate,
+.tax-summary-table th.col-igst-rate {
+  text-align: center;
+}
+
+.tax-total-row {
+  font-weight: bold;
+}
+
+/* Tax Amount in Words */
+.tax-words {
+  margin-top: 4px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.tax-label {
+  font-weight: normal;
+  display: inline;
+}
+
+.tax-value {
+  font-weight: bold;
+  display: inline;
+}
+
+/* Bottom Section */
+.bottom-section-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin-top: -1px;
+  margin-bottom: 0;
+  font-size: 11px;
+  table-layout: fixed;
+  display: table;
+  vertical-align: top;
+  line-height: 1;
+}
+
+.bottom-section-table td {
+  vertical-align: top;
+  padding: 10px 12px; /* Increased padding to prevent text from touching borders */
+  border: 1px solid #000;
+  width: 50%;
+  margin: 0;
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+.pan-cell {
+  height: 30px;
+  padding-right: 8px;
+  padding-top: 4px; 
+  padding-bottom: 4px;
+}
+
+.pan-label {
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.pan-value {
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.bank-details-cell {
+  height: auto;
+  padding-left: 8px;
+  padding-right: 8px;
+  text-align: left;
+  width: 50%;
+  min-width: 0;
+}
+
+.bank-label {
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.bank-details-cell > div {
+  font-size: 11px;
+  line-height: 1.4;
+  margin-bottom: 2px;
+  font-weight: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.declaration-cell {
+  height: auto;
+  padding-right: 15px;
+  padding-top: 8px;
+}
+
+.declaration-label {
+  margin-bottom: 3px;
+  font-size: 11px;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.declaration-text {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: normal;
+}
+
+.vista-company-cell {
+  height: 150px;
+  padding: 4px 8px;
   position: relative;
+  box-sizing: border-box;
 }
 
-.amount-words-content {
+.vista-company-cell-inner {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  height: 100%;
 }
 
-.amount-label {
-  font-weight: bold;
-  font-size: 10px;
+.vista-company-name {
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: normal;
+  text-align: center;
+  width: 100%;
 }
 
-.amount-value {
-  font-weight: bold;
-}
-
-.eoe-text {
-  font-size: 10px;
+.signatory-text {
+  text-align: center;
+  font-size: 11px;
+  font-weight: normal;
+  width: 100%;
+  margin-top: auto;
 }
 
 /* Footer */
 .invoice-footer {
-  font-size: 10px;
   text-align: center;
-  margin-top: 20px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: #333;
+  font-weight: normal;
 }
 
 /* Actions Sidebar */
@@ -355,4 +837,35 @@
 .home-icon {
   width: 20px;
   height: 20px;
+}
+
+/* Global table styles */
+.invoice-document table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  margin: 0;
+  padding: 0;
+}
+
+/* Ensure all table cells have proper spacing and rendering */
+.invoice-document table td,
+.invoice-document table th {
+  box-sizing: border-box;
+}
+
+.invoice-document table tbody,
+.invoice-document table tr {
+  margin: 0;
+  padding: 0;
+  border-spacing: 0;
+}
+
+.invoice-document table + table {
+  margin-top: -1px;
+}
+
+.invoice-document td,
+.invoice-document th {
+  margin: 0;
+  padding: 4px 6px;
 }
