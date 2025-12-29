@@ -2,9 +2,8 @@ import React, { useContext, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Country, State } from "country-state-city";
 import { QuotationContext } from "../../context/QuotationContext";
-import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
 import { createQuotation } from "../../services/api.js";
+import './QuotationA4.css';
 
 const QuotationA4 = () => {
   const {
@@ -19,7 +18,6 @@ const QuotationA4 = () => {
 
   const navigate = useNavigate();
   const printRef = useRef(null);
-  const [isDownloading, setIsDownloading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   // Extract and calculate totals
@@ -225,119 +223,8 @@ const QuotationA4 = () => {
   //   }
   // };
 
-  const handleDownloadPdf = async () => {
-  if (!printRef.current) return;
-
-  // Add safe color overrides
-  const safeColorStyle = document.createElement('style');
-  safeColorStyle.innerHTML = `
-    #quotation-pdf, #quotation-pdf * {
-      color: rgb(0, 0, 0) !important;
-      background-color: rgb(255, 255, 255) !important;
-      border-color: rgb(0, 0, 0) !important;
-    }
-    #quotation-pdf .bg-sky-800 {
-      background-color: rgb(7, 89, 133) !important;
-      color: rgb(255, 255, 255) !important;
-    }
-    #quotation-pdf .text-sky-800 {
-      color: rgb(7, 89, 133) !important;
-    }
-    #quotation-pdf .text-sky-900 {
-      color: rgb(12, 74, 110) !important;
-    }
-    #quotation-pdf .text-pink-600 {
-      color: rgb(219, 39, 119) !important;
-    }
-    #quotation-pdf .text-gray-700 {
-      color: rgb(55, 65, 81) !important;
-    }
-    #quotation-pdf .border-sky-800 {
-      border-color: rgb(7, 89, 133) !important;
-    }
-  `;
-  document.head.appendChild(safeColorStyle);
-
-  try {
-    setIsDownloading(true);
-
-    const canvas = await html2canvas(printRef.current, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      ignoreElements: (el) => el.classList.contains("no-print"),
-      onclone: (clonedDoc) => {
-        // Force reflow to ensure styles are applied
-        clonedDoc.getElementById('quotation-pdf').offsetHeight;
-      },
-      logging: false
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ 
-      unit: "mm", 
-      format: "a4",
-      orientation: "portrait"
-    });
-
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgProps = pdf.getImageProperties(imgData);
-    const pxToMm = imgProps.width / pdfWidth;
-    const imgHeightMm = imgProps.height / pxToMm;
-
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, imgHeightMm);
-
-    // Handle multiple pages if content is too long
-    let heightLeft = imgHeightMm - pdfHeight;
-    let position = -pdfHeight;
-
-    while (heightLeft > 0) {
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, imgHeightMm);
-      heightLeft -= pdfHeight;
-      position -= pdfHeight;
-    }
-
-    // Generate PDF as blob for S3 upload
-    const pdfBlob = pdf.output('blob');
-    const fileName = `quotation_${quotationDetails?.quotationNo || new Date().toISOString().slice(0, 10)}.pdf`;
-    
-    // Upload to S3
-    try {
-      const { uploadPdfToS3, updateQuotationS3Url } = await import('../../services/api.js');
-      const uploadResult = await uploadPdfToS3(pdfBlob, fileName, 'Quotation');
-      console.log('✅ Quotation PDF uploaded to S3:', uploadResult.url);
-
-      // Update database with S3 URL
-      if (quotationDetails?.quotationNo) {
-        try {
-          await updateQuotationS3Url(quotationDetails.quotationNo, uploadResult.url);
-          console.log('✅ Database updated with S3 URL');
-        } catch (dbError) {
-          console.warn('⚠️ Could not update database with S3 URL:', dbError.message);
-        }
-      }
-    } catch (uploadError) {
-      console.error('❌ Error uploading PDF to S3:', uploadError);
-      console.warn('PDF downloaded but not saved to S3. Error:', uploadError.message);
-    }
-
-    // Download the PDF to user's computer
-    pdf.save(fileName);
-    
-    // Navigate back to form page after download
-    setTimeout(() => {
-      navigate('/quotation-form');
-    }, 500);
-  } catch (err) {
-    console.error("PDF generation failed:", err);
-    alert("Failed to generate PDF. Check console for details.");
-  } finally {
-    setIsDownloading(false);
-    // Clean up - remove the temporary style element
-    document.head.removeChild(safeColorStyle);
-  }
+  const handleDownloadPdf = () => {
+    window.print();
 };
 
   // Check if required data is available
@@ -366,7 +253,12 @@ const QuotationA4 = () => {
       <div
         ref={printRef}
         id="quotation-pdf"
-        className="w-[794px] mx-auto bg-white text-[11px] leading-tight p-8 border border-gray-400"
+        className="mx-auto bg-white text-[11px] leading-tight p-8 border border-gray-400"
+        style={{
+          width: '794px',
+          minHeight: '1123px',
+          boxSizing: 'border-box'
+        }}
       >
         {/* Header: three-column layout - logo, centered commercial proposal, company name */}
         <div className="grid grid-cols-3 items-start border-b-[3px] border-sky-800 pb-2 mb-4">
@@ -389,7 +281,7 @@ const QuotationA4 = () => {
         </div>
 
         {/* Quotation Info */}
-        <div className="grid grid-cols-3 gap-6 mb-3 text-[11px]">
+        <div className="quotation-info-section grid grid-cols-3 gap-4 text-[10px]">
           <div>
             <h3 className="font-bold underline mb-1 text-sky-900">
               Quotation From
@@ -502,7 +394,8 @@ const QuotationA4 = () => {
         </div>
 
         {/* Items Table */}
-        <table className="w-full border border-black border-collapse text-[11px] mb-4">
+        <div className="quotation-items-section">
+        <table className="quotation-items-table border border-black border-collapse">
           <thead>
             <tr className="bg-sky-800 text-white text-[11px]">
               <th className="border border-black px-2 py-[3px] w-10">Sl.</th>
@@ -588,9 +481,10 @@ const QuotationA4 = () => {
             </tr>
           </tbody>
         </table>
+        </div>
 
         {/* Bank Details */}
-        <div className="text-[11px] mb-3">
+        <div className="quotation-footer-section quotation-bank-details">
           <p className="font-bold underline text-sky-900 mb-1">
             Company's Bank Details
           </p>
@@ -609,7 +503,7 @@ const QuotationA4 = () => {
         </div>
 
         {/* Terms & Conditions */}
-        <div className="text-[11px] mb-4">
+        <div className="quotation-terms">
           <p className="font-bold underline text-sky-900 mb-1">
             Terms & Conditions
           </p>
@@ -639,7 +533,7 @@ const QuotationA4 = () => {
         </div>
 
         {/* Signature: place date under the authorized signatory on the right */}
-        <div className="flex justify-between text-[11px] mb-4">
+        <div className="quotation-signature flex justify-between">
           <div />
           <div className="text-right">
             <p>Authorized Signatory</p>
@@ -648,7 +542,7 @@ const QuotationA4 = () => {
         </div>
 
         {/* Footer */}
-        <div className="grid grid-cols-4 gap-3 text-[10px] text-gray-700 border-t border-gray-400 pt-2">
+        <div className="quotation-footer-addresses grid grid-cols-4 gap-2 text-gray-700 border-t border-gray-400 pt-1">
           <div>
             #677, 1st Floor, Suite No. 755, 27th Main<br />
             13th Cross, HSR Layout, Sector 1<br />
@@ -671,7 +565,7 @@ const QuotationA4 = () => {
           </div>
         </div>
 
-        <div className="mt-3 text-center text-[10px] text-sky-800 font-medium">
+        <div className="quotation-footer-contact text-center text-sky-800 font-medium">
           info@vistaes.com | www.vistaes.com | Ph: +91 9585888855 | (+91)
           9566405555 | CIN: U72200TZ2011PTC017012
         </div>
@@ -681,10 +575,9 @@ const QuotationA4 = () => {
       <div className="fixed bottom-6 right-6 z-50 no-print flex flex-col gap-3">
         <button
           onClick={handleDownloadPdf}
-          disabled={isDownloading}
-          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+          className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"
         >
-          {isDownloading ? 'Generating PDF...' : 'Download PDF'}
+          Download PDF
         </button>
         <button
           onClick={() => navigate('/quotation-form')}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllProformaInvoices } from '../../services/api';
+import { getAllProformaInvoices, getSignedUrl } from '../../services/api';
 import './History.css';
 
 const ProformaInvoiceHistory = () => {
@@ -291,9 +291,17 @@ const ProformaInvoiceHistory = () => {
                     <td className="s3-url-cell">
                       {invoice.s3Url ? (
                         <a 
-                          href={invoice.s3Url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                          href="#" 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const signedUrl = await getSignedUrl(invoice.s3Url);
+                              window.open(signedUrl, '_blank', 'noopener,noreferrer');
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                              alert('Error opening PDF. Please try again.');
+                            }
+                          }}
                           className="s3-link"
                           title={invoice.s3Url}
                         >

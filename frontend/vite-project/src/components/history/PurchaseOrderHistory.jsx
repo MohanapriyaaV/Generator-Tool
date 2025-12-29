@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllPurchaseOrders } from '../../services/api';
+import { getAllPurchaseOrders, getSignedUrl } from '../../services/api';
 import './History.css';
 
 
@@ -57,24 +57,33 @@ const PurchaseOrderHistory = () => {
   // Vendor info multi-line rendering
   const renderVendorInfo = (billToAddress) => {
     if (!billToAddress) return <span className="address-text">-</span>;
+    
+    // Build address line from available fields
+    const addressParts = [
+      billToAddress.street,
+      billToAddress.apartment,
+      billToAddress.city,
+      billToAddress.state,
+      billToAddress.zipCode
+    ].filter(Boolean);
+    const addressLine = addressParts.length > 0 ? addressParts.join(', ') : null;
+    
     return (
       <div className="address-cell">
         <strong><Highlight text={billToAddress.companyName || '-'} /></strong>
-        {billToAddress.contactName && (
+        {billToAddress.clientName && (
           <span className="address-text">
-            <Highlight text={billToAddress.contactName} />
+            <Highlight text={billToAddress.clientName} />
           </span>
         )}
-        {billToAddress.address && (
+        {addressLine && (
           <span className="address-text">
-            <Highlight text={billToAddress.address} />
+            <Highlight text={addressLine} />
           </span>
         )}
-        {billToAddress.city && billToAddress.state && billToAddress.pincode && (
+        {billToAddress.country && (
           <span className="address-text">
-            <Highlight
-              text={`${billToAddress.city}, ${billToAddress.state}, ${billToAddress.pincode}, ${billToAddress.country || 'IN'}`}
-            />
+            <Highlight text={billToAddress.country} />
           </span>
         )}
       </div>
@@ -91,13 +100,22 @@ const PurchaseOrderHistory = () => {
     const term = searchTerm.toLowerCase();
 
     const vendor = order.billToAddress || {};
+    const addressParts = [
+      vendor.street,
+      vendor.apartment,
+      vendor.city,
+      vendor.state,
+      vendor.zipCode
+    ].filter(Boolean);
+    const addressLine = addressParts.join(', ');
+    
     const searchable = [
       order.projectName || '',
       order.referenceNumber || '',
       order.poNumber || '',
       vendor.companyName || '',
-      vendor.contactName || '',
-      vendor.address || '',
+      vendor.clientName || '',
+      addressLine,
       vendor.city || '',
       vendor.state || '',
       vendor.country || '',
@@ -203,14 +221,27 @@ const PurchaseOrderHistory = () => {
                     </td>
                     <td>{renderVendorInfo(order.billToAddress)}</td>
                     <td>
-                      <Highlight text={formatDateTime(order.poDate || order.createdAt)} />
+                      <Highlight text={formatDateTime(order.createdAt || order.poDate)} />
                     </td>
                     <td className="amount-cell">
                       <Highlight text={formatAmount(order.totalAmount)} />
                     </td>
                     <td className="s3-url-cell">
                       {order.s3Url ? (
-                        <a href={order.s3Url} target="_blank" rel="noopener noreferrer" className="s3-link">
+                        <a 
+                          href="#" 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const signedUrl = await getSignedUrl(order.s3Url);
+                              window.open(signedUrl, '_blank', 'noopener,noreferrer');
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                              alert('Error opening PDF. Please try again.');
+                            }
+                          }}
+                          className="s3-link"
+                        >
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 0a2 2 0 002 2h2a2 2 0 002-2m-6 0V7a2 2 0 012-2h6a2 2 0 012 2v10" /></svg>
                           View PDF
                         </a>

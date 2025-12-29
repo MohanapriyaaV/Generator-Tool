@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAllQuotations } from '../../services/api';
+import { getAllQuotations, getSignedUrl } from '../../services/api';
 import './History.css';
 
 const QuotationHistory = () => {
@@ -299,9 +299,17 @@ const QuotationHistory = () => {
                     <td className="s3-url-cell">
                       {quotation.s3Url ? (
                         <a 
-                          href={quotation.s3Url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                          href="#" 
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            try {
+                              const signedUrl = await getSignedUrl(quotation.s3Url);
+                              window.open(signedUrl, '_blank', 'noopener,noreferrer');
+                            } catch (error) {
+                              console.error('Error getting signed URL:', error);
+                              alert('Error opening PDF. Please try again.');
+                            }
+                          }}
                           className="s3-link"
                           title={quotation.s3Url}
                         >
