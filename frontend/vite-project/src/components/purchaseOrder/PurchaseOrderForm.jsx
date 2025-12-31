@@ -732,86 +732,86 @@ const PurchaseOrderForm = () => {
     setFormData(prev => ({ ...prev, [name]: newValue }));
   }, []);
 
-  // Generate PO number on component mount - DISABLED: User wants field to start blank
-  // useEffect(() => {
-  //   // Skip if editing existing PO (has initialData)
-  //   if (location.state?.initialData) {
-  //     return;
-  //   }
+  // Generate PO number on component mount
+  useEffect(() => {
+    // Skip if editing existing PO (has initialData)
+    if (location.state?.initialData) {
+      return;
+    }
 
-  //   // Skip if PO number already exists in formData
-  //   if (formData.poNumber && formData.poNumber.trim() !== '') {
-  //     return;
-  //   }
+    // Skip if PO number already exists in formData
+    if (formData.poNumber && formData.poNumber.trim() !== '') {
+      return;
+    }
     
-  //   // Also check location.state for initialData (in case it's set after this effect runs)
-  //   if (location.state?.initialData?.poNumber) {
-  //     return;
-  //   }
+    // Also check location.state for initialData (in case it's set after this effect runs)
+    if (location.state?.initialData?.poNumber) {
+      return;
+    }
 
-  //   const generatePoNumber = async () => {
-  //     try {
-  //       console.log('🔄 [PurchaseOrderForm] Starting PO number generation...');
-  //       const poNumber = await getNextPoNumber();
-  //       console.log('✅ [PurchaseOrderForm] Generated PO number:', poNumber);
+    const generatePoNumber = async () => {
+      try {
+        console.log('🔄 [PurchaseOrderForm] Starting PO number generation...');
+        const poNumber = await getNextPoNumber();
+        console.log('✅ [PurchaseOrderForm] Generated PO number:', poNumber);
         
-  //       // Extract numeric part for validation
-  //       const numericPart = parseBackendPoToNumeric(poNumber);
-  //       setGeneratedPoNumeric(numericPart);
+        // Extract numeric part for validation
+        const numericPart = parseBackendPoToNumeric(poNumber);
+        setGeneratedPoNumeric(numericPart);
         
-  //       // Set sequence digits
-  //       if (numericPart !== null) {
-  //         setSequenceDigits(numericPart.toString()); // No padding - show raw number
-  //       }
+        // Set sequence digits
+        if (numericPart !== null) {
+          setSequenceDigits(numericPart.toString()); // No padding - show raw number
+        }
         
-  //       setFormData(prev => ({
-  //         ...prev,
-  //         poNumber: poNumber
-  //       }));
-  //     } catch (error) {
-  //       console.error('❌ [PurchaseOrderForm] Error generating PO number:', error);
-  //       // Fallback: generate from existing POs
-  //       try {
-  //         const allPOs = await getAllPurchaseOrders();
-  //         const existingNumbers = allPOs
-  //           .map(po => po.poNumber || po.fullPurchaseOrderData?.poNumber)
-  //           .filter(num => num && typeof num === 'string' && (num.startsWith('VIS_PO_') || num.startsWith('PO-')));
+        setFormData(prev => ({
+          ...prev,
+          poNumber: poNumber
+        }));
+      } catch (error) {
+        console.error('❌ [PurchaseOrderForm] Error generating PO number:', error);
+        // Fallback: generate from existing POs
+        try {
+          const allPOs = await getAllPurchaseOrders();
+          const existingNumbers = allPOs
+            .map(po => po.poNumber || po.fullPurchaseOrderData?.poNumber)
+            .filter(num => num && typeof num === 'string' && (num.startsWith('VIS_PO_') || num.startsWith('PO-')));
           
-  //         let counter = 1;
-  //         let newNumber;
-  //         let isUnique = false;
+          let counter = 1;
+          let newNumber;
+          let isUnique = false;
           
-  //         while (!isUnique && counter < 10000) {
-  //           const paddedCounter = counter.toString().padStart(4, '0');
-  //           newNumber = `VIS_PO_${paddedCounter}`;
+          while (!isUnique && counter < 10000) {
+            const paddedCounter = counter.toString().padStart(4, '0');
+            newNumber = `VIS_PO_${paddedCounter}`;
             
-  //           if (!existingNumbers.includes(newNumber)) {
-  //             isUnique = true;
-  //           } else {
-  //             counter++;
-  //           }
-  //         }
+            if (!existingNumbers.includes(newNumber)) {
+              isUnique = true;
+            } else {
+              counter++;
+            }
+          }
           
-  //         if (newNumber) {
-  //           setGeneratedPoNumeric(counter);
-  //           setSequenceDigits(counter.toString()); // No padding - show raw number
-  //           setFormData(prev => ({
-  //             ...prev,
-  //             poNumber: newNumber
-  //           }));
-  //         }
-  //       } catch (fallbackError) {
-  //         console.error('❌ [PurchaseOrderForm] Fallback PO generation failed:', fallbackError);
-  //       }
-  //     }
-  //   };
+          if (newNumber) {
+            setGeneratedPoNumeric(counter);
+            setSequenceDigits(counter.toString()); // No padding - show raw number
+            setFormData(prev => ({
+              ...prev,
+              poNumber: newNumber
+            }));
+          }
+        } catch (fallbackError) {
+          console.error('❌ [PurchaseOrderForm] Fallback PO generation failed:', fallbackError);
+        }
+      }
+    };
 
-  //   // Only generate if initialData is not set
-  //   if (!location.state?.initialData) {
-  //     generatePoNumber();
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [location.state?.initialData]);
+    // Only generate if initialData is not set
+    if (!location.state?.initialData) {
+      generatePoNumber();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.initialData]);
 
   // populate form when editing from preview
   useEffect(() => {
