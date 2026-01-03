@@ -7,6 +7,35 @@ import { WATERMARK_BASE64_DATA } from './watermarkBase64';
 // Register the fonts
 pdfMake.vfs = pdfFonts.pdfMake?.vfs || pdfFonts.vfs;
 
+// Helper function to validate and ensure image data is correct
+const validateImageData = (data, name) => {
+  if (!data) {
+    console.error(`ERROR: ${name} is missing!`);
+    return '';
+  }
+  if (!data.startsWith('data:image/')) {
+    console.warn(`WARNING: ${name} does not appear to be a valid data URI`);
+  }
+  return data;
+};
+
+// Validate and store logo and watermark
+// CRITICAL: These must be different - LOGO for header, WATERMARK for background
+const LOGO_IMAGE_DATA = validateImageData(LOGO_BASE64_DATA, 'LOGO_BASE64_DATA');
+const WATERMARK_IMAGE_DATA = validateImageData(WATERMARK_BASE64_DATA, 'WATERMARK_BASE64_DATA');
+
+// Validate that logo and watermark are different
+if (LOGO_IMAGE_DATA && WATERMARK_IMAGE_DATA && LOGO_IMAGE_DATA === WATERMARK_IMAGE_DATA) {
+  console.error('ERROR: Logo and watermark are the same! This will cause incorrect display.');
+} else if (LOGO_IMAGE_DATA && WATERMARK_IMAGE_DATA) {
+  // Check first 50 chars to see if they're different
+  const logoStart = LOGO_IMAGE_DATA.substring(0, 50);
+  const watermarkStart = WATERMARK_IMAGE_DATA.substring(0, 50);
+  if (logoStart === watermarkStart) {
+    console.warn('WARNING: Logo and watermark appear to have the same start - they might be swapped!');
+  }
+}
+
 // Define custom styles for the PDF
 const styles = {
   header: { fontSize: 18, bold: true, alignment: 'center', margin: [0, 0, 0, 10] },
@@ -554,22 +583,74 @@ export const generatePdfFromData = (data, isGeneratingPDF, onDownloadStateChange
         unbreakable: true
       };
 
-      // --- Document Definition ---
-      const docDefinition = {
+      // Final validation before PDF generation
+      if (!LOGO_BASE64_DATA) {
+        console.error('ERROR: Logo image data is missing!');
+      }
+      if (!WATERMARK_BASE64_DATA) {
+        console.error('ERROR: Watermark image data is missing!');
+      }
+      
+      // CRITICAL FIX: Capture image values in local variables
+      // This ensures the closure in the header function captures the correct values
+      const logoForPDF = LOGO_BASE64_DATA;
+      const watermarkForPDF = WATERMARK_BASE64_DATA;
+      
+      // Validate they're different
+      if (logoForPDF === watermarkForPDF) {
+        console.error('CRITICAL ERROR: Logo and watermark are the same!');
+      }
+      
+      // Log which images we're using (first 100 chars for verification)
+      console.log('=== PDF GENERATION - IMAGE VERIFICATION ===');
+      console.log('logoForPDF (first 100 chars):', logoForPDF?.substring(0, 100));
+      console.log('watermarkForPDF (first 100 chars):', watermarkForPDF?.substring(0, 100));
+      console.log('Are they the same?', logoForPDF === watermarkForPDF);
+      console.log('==========================================');
+      
+      // Helper function to create document definition with correct images
+      // This ensures each PDF gets a fresh definition with proper image references
+      const createDocumentDefinition = () => {
+        // Capture images in function scope to ensure closure works correctly
+        const logo = logoForPDF;
+        const watermark = watermarkForPDF;
+        
+        console.log('Creating document definition with logo (first 100 chars):', logo?.substring(0, 100));
+        
+        return {
         pageSize: 'A4',
         pageMargins: [25, 80, 25, 25],
         styles: styles,
         background: {
-          image: WATERMARK_BASE64_DATA,
+          // Use captured watermark value
+          image: watermark,
           width: 250,
           opacity: 0.6,
           absolutePosition: { x: 172, y: 200 }
         },
         header: (currentPage, pageCount) => {
+          // CRITICAL FIX: Use captured logo value from closure
+          // The closure captures 'logo' from the function scope
+          
+          // Validate logo is available
+          if (!logo) {
+            console.error('ERROR: No logo data available for header!');
+            return { text: 'LOGO MISSING', fontSize: 8 };
+          }
+          
+          // CRITICAL CHECK: Ensure we're not accidentally using watermark as logo
+          if (logo === watermark) {
+            console.error('CRITICAL ERROR: logo is the same as watermark!');
+            return { text: 'LOGO ERROR', fontSize: 8 };
+          }
+          
+          // Log which image we're using (first 100 chars for debugging)
+          console.log('Header function - Using logo (first 100 chars):', logo.substring(0, 100));
+          
           return {
             columns: [
               {
-                image: LOGO_BASE64_DATA, 
+                image: logo, 
                 width: 95,
                 fit: [95, 95], 
                 alignment: 'left',
@@ -908,17 +989,33 @@ export const generatePdfFromData = (data, isGeneratingPDF, onDownloadStateChange
           bottomTable,
         ],
       };
+      }; // End of createDocumentDefinition helper function
 
       // Create PDF document
       const invoiceNumber = data.invoiceNumber || 'invoice';
       const fileName = `Invoice_${invoiceNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
       
-      console.log('Creating PDF document...');
+      console.log('Creating PDF documents (separate for blob and download)...');
       
-      let pdfDoc;
+      // CRITICAL FIX: Create TWO separate PDF documents
+      // One for blob (AWS upload) and one for download
+      // This ensures both are generated independently with fresh image data
+      let pdfDocForBlob;
+      let pdfDocForDownload;
+      
       try {
-        pdfDoc = pdfMake.createPdf(docDefinition);
-        console.log('PDF document created successfully');
+        // CRITICAL FIX: Create separate document definitions for each PDF
+        // This ensures each PDF gets its own fresh definition with correct image closures
+        const docDefinitionForBlob = createDocumentDefinition();
+        const docDefinitionForDownload = createDocumentDefinition();
+        
+        // Create PDF document for blob (AWS upload) - generate this first
+        pdfDocForBlob = pdfMake.createPdf(docDefinitionForBlob);
+        console.log('PDF document for blob created successfully');
+        
+        // Create PDF document for download - separate instance with separate definition
+        pdfDocForDownload = pdfMake.createPdf(docDefinitionForDownload);
+        console.log('PDF document for download created successfully');
       } catch (createError) {
         console.error('Error creating PDF document:', createError);
         alert('Error creating PDF: ' + createError.message);
@@ -926,24 +1023,14 @@ export const generatePdfFromData = (data, isGeneratingPDF, onDownloadStateChange
         return;
       }
 
-      console.log('Attempting to download PDF:', fileName);
+      console.log('Generating PDF blob for AWS upload...');
+      
+      // Generate blob from the first PDF document (for AWS upload)
       try {
-        pdfDoc.download(fileName);
-        console.log('PDF download method called');
-        
-        pdfDoc.getBlob((blob) => {
-          console.log('PDF blob generated, size:', blob.size);
+        pdfDocForBlob.getBlob((blob) => {
+          console.log('PDF blob generated for AWS upload, size:', blob.size);
           
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = fileName;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          console.log('PDF download link triggered');
-          
+          // Upload to AWS using the blob
           (async () => {
             try {
               console.log('Uploading PDF to S3...');
@@ -1003,10 +1090,21 @@ export const generatePdfFromData = (data, isGeneratingPDF, onDownloadStateChange
             } catch (uploadError) {
               console.error('❌ Error uploading PDF to S3:', uploadError);
               if (onDownloadStateChange) onDownloadStateChange(false);
-              console.warn('PDF downloaded but not saved to S3. Error:', uploadError.message);
+              console.warn('PDF will be downloaded but not saved to S3. Error:', uploadError.message);
             }
           })();
         });
+      } catch (blobError) {
+        console.error('Error generating PDF blob:', blobError);
+        // Continue with download even if blob generation fails
+      }
+      
+      // Now trigger the local download using the second PDF document
+      // This ensures both blob and download are generated independently
+      console.log('Attempting to download PDF locally:', fileName);
+      try {
+        pdfDocForDownload.download(fileName);
+        console.log('PDF download method called');
       } catch (downloadError) {
         console.error('Error downloading PDF:', downloadError);
         alert('Error downloading PDF: ' + downloadError.message);

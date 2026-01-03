@@ -1,5 +1,6 @@
 .invoice-preview {
-  background: #fff;
+  background: #fff !important;
+  background-color: #fff !important;
   padding: 40px 50px;
   font-size: 11px;
   overflow-wrap: break-word;

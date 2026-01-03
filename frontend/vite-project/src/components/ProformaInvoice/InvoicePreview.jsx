@@ -374,7 +374,9 @@ const InvoicePreview = ({ data, downloadRef, isGeneratingPDF, onDownloadStateCha
     <>
       
       <div className="invoice-preview" ref={invoiceRef} style={{
-        position: 'relative'
+        position: 'relative',
+        backgroundColor: '#fff',
+        background: '#fff'
       }}>
         {/* Watermark overlay for better opacity control */}
         <div style={{

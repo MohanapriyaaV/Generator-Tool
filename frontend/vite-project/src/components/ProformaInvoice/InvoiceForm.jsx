@@ -562,11 +562,22 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     setBankDetails({ bankName: '', accountNo: '', branchIfsc: '', pan: '' });
   };
 
-  // Clear all fields
-  const clearAllFields = () => {
-    const confirmed = window.confirm('Clear all fields? This will reset the form.');
-    if (!confirmed) return;
+  // Clear all fields (with optional parameter to skip confirmation)
+  const clearAllFields = (skipConfirmation = false) => {
+    console.log('clearAllFields called, skipConfirmation:', skipConfirmation);
     
+    if (!skipConfirmation) {
+      const warningMessage = '⚠️ WARNING: This will clear ALL form data including:\n\n• Invoice From details\n• Bill To details\n• Ship To details\n• Invoice details\n• All items\n• Bank details\n\nThis action cannot be undone. Are you sure you want to proceed?';
+      console.log('Showing confirmation dialog...');
+      const confirmed = window.confirm(warningMessage);
+      console.log('User confirmed:', confirmed);
+      if (!confirmed) {
+        console.log('User cancelled, not clearing fields');
+        return;
+      }
+    }
+    
+    console.log('Clearing all fields...');
     clearInvoiceFromFields();
     clearBillToFields();
     clearShipToFields();
@@ -574,7 +585,67 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
     clearItemsFields();
     clearBankDetailsFields();
     setErrors({});
+    console.log('All fields cleared');
   };
+
+  // Effect to handle form clearing and PI number generation after download
+  useEffect(() => {
+    // Check if we should clear the form (coming back from download)
+    if (location.state?.clearForm) {
+      console.log('🔄 [InvoiceForm] Clearing form after download...');
+      
+      // Clear all fields without confirmation (inline to avoid dependency issues)
+      clearInvoiceFromFields();
+      clearBillToFields();
+      clearShipToFields();
+      clearInvoiceDetailsFields();
+      clearItemsFields();
+      clearBankDetailsFields();
+      setErrors({});
+      
+      // Generate new PI number
+      const generateInvoiceNumber = async () => {
+        try {
+          console.log('🔄 [InvoiceForm] Generating new invoice number after download...');
+          const newNumber = await getNextProformaInvoiceNumber();
+          console.log('✅ [InvoiceForm] Generated new invoice number:', newNumber);
+          
+          const seq = extractSequenceNumber(newNumber);
+          if (seq !== null) {
+            setSequenceDigits(seq.toString());
+            setGeneratedSequence(seq);
+          }
+          
+          setFormData(prev => ({
+            ...prev,
+            invoiceNumber: newNumber
+          }));
+        } catch (error) {
+          console.error('❌ [InvoiceForm] Error generating invoice number:', error);
+          // Fallback: generate with current financial year
+          const financialYear = getCurrentFinancialYear();
+          const fallbackNumber = buildDocumentNumber('PI', financialYear, 1);
+          
+          setSequenceDigits('1');
+          setGeneratedSequence(1);
+          
+          setFormData(prev => ({
+            ...prev,
+            invoiceNumber: fallbackNumber
+          }));
+        }
+      };
+      
+      generateInvoiceNumber();
+      
+      // Clear the location state to prevent re-triggering
+      // Use replace to update the location state without adding to history
+      if (location.state) {
+        window.history.replaceState({ ...location.state, clearForm: false }, '');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.clearForm]);
 
   // Handle reference number lookup
   const handleReferenceNoLookup = useCallback(async () => {
@@ -2253,7 +2324,11 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
           <div className="fixed bottom-6 right-6 flex flex-col items-end gap-3">
             <button 
               type="button"
-              onClick={clearAllFields}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                clearAllFields();
+              }}
               className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-2 rounded-lg shadow hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               Clear All

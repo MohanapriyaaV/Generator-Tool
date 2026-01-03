@@ -162,8 +162,9 @@ const InvoicePreviewWrapper = () => {
     if (downloadRef.current?.handleDownloadPDF) {
       downloadRef.current.handleDownloadPDF();
       // Navigate back to form page after download (with delay to allow download to complete)
+      // Pass clearForm flag to indicate form should be cleared and new PI number generated
       setTimeout(() => {
-        navigate('/proforma-invoice', { state: { initialData: data } });
+        navigate('/proforma-invoice', { state: { clearForm: true } });
       }, 2000);
     }
   };
