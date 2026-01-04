@@ -142,6 +142,7 @@
 .quotation-signature {
   margin-bottom: 12px;
   font-size: 11px;
+  margin-top: auto;
 }
 
 .quotation-signature p {
@@ -155,6 +156,7 @@
   line-height: 1.3;
   margin-bottom: 8px;
   padding-top: 8px;
+  margin-top: auto;
 }
 
 .quotation-footer-contact {

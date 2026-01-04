@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Country, State } from "country-state-city";
 import { QuotationContext } from "../../context/QuotationContext";
 import { createQuotation } from "../../services/api.js";
+import { generateQuotationPDF } from "../../services/quotationPdfGenerator.js";
 import './QuotationA4.css';
 
 const QuotationA4 = () => {
@@ -223,9 +224,24 @@ const QuotationA4 = () => {
   //   }
   // };
 
-  const handleDownloadPdf = () => {
-    window.print();
-};
+  const handleDownloadPdf = async () => {
+    if (!printRef.current) {
+      alert("Quotation preview not ready");
+      return;
+    }
+
+    try {
+      const quotationNo = quotationDetails?.quotationNo || "Quotation";
+      const fileName = `${quotationNo}_${new Date().toISOString().slice(0, 10)}.pdf`;
+      console.log("Starting PDF generation...");
+      await generateQuotationPDF(printRef, fileName);
+      console.log("PDF generated successfully");
+    } catch (error) {
+      console.error("PDF generation failed:", error);
+      const errorMessage = error?.message || "Unknown error occurred";
+      alert(`Failed to generate PDF: ${errorMessage}. Please check the console for details.`);
+    }
+  };
 
   // Check if required data is available
   if (!quotationFrom || !quotationFrom.companyName) {
@@ -253,30 +269,50 @@ const QuotationA4 = () => {
       <div
         ref={printRef}
         id="quotation-pdf"
-        className="mx-auto bg-white text-[11px] leading-tight p-8 border border-gray-400"
+        className="mx-auto bg-white text-[11px] leading-tight border border-gray-400"
         style={{
           width: '794px',
           minHeight: '1123px',
-          boxSizing: 'border-box'
+          boxSizing: 'border-box',
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '30px 20px'
         }}
       >
-        {/* Header: three-column layout - logo, centered commercial proposal, company name */}
-        <div className="grid grid-cols-3 items-start border-b-[3px] border-sky-800 pb-2 mb-4">
-          <div>
-            <h1 className="text-[38px] font-extrabold text-sky-800 leading-none tracking-tight">
-              VISTA
-            </h1>
-            <p className="text-pink-600 text-xs font-semibold -mt-1">Innovation@work</p>
+        {/* Header: logo and company name on top row, commercial proposal below */}
+        <div style={{ borderBottom: '3px solid #0c4a6e', paddingBottom: '8px', marginBottom: '12px' }}>
+          {/* Top row: Logo and Company Name */}
+          <div className="flex items-center" style={{ marginTop: '5px', gap: '20px' }}>
+            <div style={{ flexShrink: 0, marginTop: '8px' }}>
+              <img 
+                src="/logo.jpg" 
+                alt="VISTA Logo" 
+                className="h-20 w-auto object-contain"
+                style={{ maxHeight: '100px', maxWidth: '220px', display: 'block' }}
+              />
+            </div>
+            <div style={{ flex: 1, textAlign: 'left' }}>
+              <h2 className="text-sky-900 uppercase whitespace-nowrap" style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                color: '#0c4a6e', 
+                margin: 0, 
+                lineHeight: '1.2' 
+              }}>
+                VISTA ENGINEERING SOLUTIONS PVT LTD
+              </h2>
+            </div>
           </div>
-
-          <div className="text-center">
-            <p className="text-[20px] mt-12 text-gray-700 font-semibold">Commercial Proposal</p>
-          </div>
-
-          <div className="items-center text left">
-            <h2 className="text-[13px] font-bold text-sky-900 uppercase">
-              VISTA ENGINEERING SOLUTIONS PVT LTD
-            </h2>
+          
+          {/* Bottom row: Commercial Proposal */}
+          <div className="text-center" style={{ marginTop: '5px', marginBottom: '8px' }}>
+            <p className="text-gray-700 font-semibold" style={{ 
+              fontSize: '20px', 
+              color: '#374151', 
+              margin: 0 
+            }}>
+              Commercial Proposal
+            </p>
           </div>
         </div>
 
@@ -501,6 +537,9 @@ const QuotationA4 = () => {
             <span style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{bankDetails.branch || "-"}{" "}{bankDetails.ifscCode || "-"}</span>
           </p>
         </div>
+
+        {/* Spacer to push footer to bottom */}
+        <div style={{ flexGrow: 1 }}></div>
 
         {/* Terms & Conditions */}
         <div className="quotation-terms">
