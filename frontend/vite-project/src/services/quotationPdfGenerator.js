@@ -731,6 +731,27 @@ export const generateQuotationPDF = async (
 
     pdf.save(fileName);
 
+    // Upload PDF to AWS S3 and update database
+    try {
+      console.log('Generating PDF blob for AWS upload...');
+      const pdfBlob = pdf.output('blob');
+      console.log('PDF blob generated, size:', pdfBlob.size);
+      
+      // Upload to AWS S3
+      const { uploadPdfToS3, updateQuotationS3Url } = await import('./api.js');
+      const uploadResult = await uploadPdfToS3(pdfBlob, fileName, 'Quotation');
+      console.log('✅ PDF uploaded to S3:', uploadResult.url);
+      
+      // Update database with S3 URL
+      const quotationNo = fileName.split('_')[1]; // Extract quotation number from filename (format: timestamp_QT25260021_date.pdf)
+      console.log('Extracted quotation number for database update:', quotationNo);
+      await updateQuotationS3Url(quotationNo, uploadResult.url);
+      console.log('✅ Database updated with S3 URL');
+    } catch (uploadError) {
+      console.warn('⚠️ Could not upload PDF to S3 or update database:', uploadError.message);
+      // Don't throw error - PDF was still downloaded successfully
+    }
+
   } catch (error) {
     console.error("PDF generation failed:", error);
     throw error;
