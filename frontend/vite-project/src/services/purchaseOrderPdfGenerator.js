@@ -1,5 +1,21 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import { WATERMARK_BASE64_DATA } from './watermarkBase64';
+
+// Validate watermark data
+const validateImageData = (data, name) => {
+  if (!data || typeof data !== 'string') {
+    console.warn(`${name} is missing or invalid`);
+    return null;
+  }
+  if (!data.startsWith('data:image/')) {
+    console.warn(`${name} does not appear to be a valid image data URL`);
+    return null;
+  }
+  return data;
+};
+
+const WATERMARK_IMAGE_DATA = validateImageData(WATERMARK_BASE64_DATA, 'WATERMARK_BASE64_DATA');
 
 /**
  * Generates a perfect one-page PDF from HTML
@@ -30,7 +46,7 @@ export const generatePurchaseOrderPDF = async (previewRef, fileName = "PO.pdf") 
 
   const imgData = canvas.toDataURL("image/png");
 
-  // --- STEP 3: create PDF ---
+  // --- STEP 3: create PDF with watermark ---
   const pdf = new jsPDF("p", "mm", "a4");
   const pdfWidth = pdf.internal.pageSize.getWidth();
   const pdfHeight = pdf.internal.pageSize.getHeight();
@@ -53,7 +69,43 @@ export const generatePurchaseOrderPDF = async (previewRef, fileName = "PO.pdf") 
   const x = (pdfWidth - finalWidth) / 2;
   const y = 0;
 
-  pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+  // Add watermark if available
+  if (WATERMARK_IMAGE_DATA) {
+    try {
+      // Create watermark image and wait for it to load
+      const watermarkImg = new Image();
+      await new Promise((resolve, reject) => {
+        watermarkImg.onload = resolve;
+        watermarkImg.onerror = reject;
+        watermarkImg.src = WATERMARK_IMAGE_DATA;
+      });
+
+      // Create canvas for watermark composition
+      const watermarkCanvas = document.createElement('canvas');
+      const watermarkCtx = watermarkCanvas.getContext('2d');
+      watermarkCanvas.width = canvas.width;
+      watermarkCanvas.height = canvas.height;
+      
+      // Draw main content first
+      watermarkCtx.drawImage(canvas, 0, 0);
+      
+      // Draw watermark with opacity
+      watermarkCtx.globalAlpha = 0.6;
+      const watermarkSize = Math.min(canvas.width, canvas.height) * 0.4;
+      const watermarkX = (canvas.width - watermarkSize) / 2;
+      const watermarkY = (canvas.height - watermarkSize) / 2;
+      watermarkCtx.drawImage(watermarkImg, watermarkX, watermarkY, watermarkSize, watermarkSize);
+      
+      // Use combined image
+      const finalImgData = watermarkCanvas.toDataURL("image/png", 1.0);
+      pdf.addImage(finalImgData, "PNG", x, y, finalWidth, finalHeight);
+    } catch (error) {
+      console.warn('Watermark failed, using original:', error);
+      pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+    }
+  } else {
+    pdf.addImage(imgData, "PNG", x, y, finalWidth, finalHeight);
+  }
 
   // Save the PDF
   pdf.save(fileName);
