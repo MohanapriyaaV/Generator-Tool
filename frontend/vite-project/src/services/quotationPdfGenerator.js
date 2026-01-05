@@ -743,10 +743,20 @@ export const generateQuotationPDF = async (
       console.log('✅ PDF uploaded to S3:', uploadResult.url);
       
       // Update database with S3 URL
-      const quotationNo = fileName.split('_')[1]; // Extract quotation number from filename (format: timestamp_QT25260021_date.pdf)
-      console.log('Extracted quotation number for database update:', quotationNo);
+      // Filename format: QT25260021_2024-01-15.pdf (quotationNo_date.pdf)
+      // Extract quotation number (first part before underscore, remove .pdf if present)
+      const fileNameWithoutExt = fileName.replace(/\.pdf$/i, '');
+      const quotationNo = fileNameWithoutExt.split('_')[0]; 
+      console.log('📄 Filename:', fileName);
+      console.log('🔍 Extracted quotation number for database update:', quotationNo);
+      
+      if (!quotationNo || quotationNo === 'Quotation') {
+        console.warn('⚠️ Could not extract valid quotation number from filename. Skipping database update.');
+        return;
+      }
+      
       await updateQuotationS3Url(quotationNo, uploadResult.url);
-      console.log('✅ Database updated with S3 URL');
+      console.log('✅ Database updated with S3 URL for quotation:', quotationNo);
     } catch (uploadError) {
       console.warn('⚠️ Could not upload PDF to S3 or update database:', uploadError.message);
       // Don't throw error - PDF was still downloaded successfully
