@@ -637,15 +637,9 @@ const InvoiceForm = ({ onSubmit, loading = false, initialData = null }) => {
       };
       
       generateInvoiceNumber();
-      
-      // Clear the location state to prevent re-triggering
-      // Use replace to update the location state without adding to history
-      if (location.state) {
-        window.history.replaceState({ ...location.state, clearForm: false }, '');
-      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.state?.clearForm]);
+  }, [location.state?.clearForm, location.state?.timestamp]);
 
   // Handle reference number lookup
   const handleReferenceNoLookup = useCallback(async () => {

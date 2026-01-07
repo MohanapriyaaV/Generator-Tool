@@ -682,11 +682,11 @@ export const generateQuotationPDF = async (
   });
 
     // 5. Generate PDF with watermark if available
-    const imgData = canvas.toDataURL("image/png", 1.0);
-    const pdf = new jsPDF("p", "mm", "a4");
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    
+  const imgData = canvas.toDataURL("image/png", 1.0);
+  const pdf = new jsPDF("p", "mm", "a4");
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+
     // Add padding to PDF
     const padding = 10; // 10mm padding on all sides
     const imgWidth = pdfWidth - (padding * 2);
@@ -729,7 +729,7 @@ export const generateQuotationPDF = async (
       pdf.addImage(imgData, "PNG", padding, padding, imgWidth, imgHeight);
     }
 
-    pdf.save(fileName);
+  pdf.save(fileName);
 
     // Upload PDF to AWS S3 and update database
     try {
@@ -743,7 +743,9 @@ export const generateQuotationPDF = async (
       console.log('✅ PDF uploaded to S3:', uploadResult.url);
       
       // Update database with S3 URL
-      const quotationNo = fileName.split('_')[1]; // Extract quotation number from filename (format: timestamp_QT25260021_date.pdf)
+      // Filename format: QT25260021_2026-01-07.pdf
+      // Extract quotation number (part before the first underscore, remove .pdf extension)
+      const quotationNo = fileName.split('_')[0].replace('.pdf', ''); 
       console.log('Extracted quotation number for database update:', quotationNo);
       await updateQuotationS3Url(quotationNo, uploadResult.url);
       console.log('✅ Database updated with S3 URL');

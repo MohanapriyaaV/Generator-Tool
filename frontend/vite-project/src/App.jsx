@@ -163,8 +163,13 @@ const InvoicePreviewWrapper = () => {
       downloadRef.current.handleDownloadPDF();
       // Navigate back to form page after download (with delay to allow download to complete)
       // Pass clearForm flag to indicate form should be cleared and new PI number generated
+      console.log("✅ PDF download completed. Navigating back to form with clearForm flag...");
       setTimeout(() => {
-        navigate('/proforma-invoice', { state: { clearForm: true } });
+        navigate('/proforma-invoice', { 
+          state: { clearForm: true, timestamp: Date.now() },
+          replace: false
+        });
+        console.log("✅ Navigation completed with clearForm state:", { clearForm: true, timestamp: Date.now() });
       }, 2000);
     }
   };
@@ -175,8 +180,12 @@ const InvoicePreviewWrapper = () => {
   };
 
   const handleCreateNew = () => {
-    // Navigate to form without data
-    navigate('/proforma-invoice');
+    // Navigate to form without data but with clearForm flag
+    console.log("✅ Create New Proforma Invoice clicked - navigating with clearForm flag...");
+    navigate('/proforma-invoice', { 
+      state: { clearForm: true, timestamp: Date.now() },
+      replace: false
+    });
   };
 
   if (!data) {

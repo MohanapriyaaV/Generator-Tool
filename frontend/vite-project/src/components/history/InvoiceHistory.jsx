@@ -53,43 +53,51 @@ const InvoiceHistory = () => {
 
   const formatAddressData = (address, fullInvoiceData) => {
     // Get address data from multiple possible locations
-    const addressData = address || fullInvoiceData?.formData || {};
+    const addressData = address || fullInvoiceData?.formData || fullInvoiceData?.billToAddress || {};
     
-    // Get name and company name
-    const clientName = addressData.name || addressData.clientName || addressData.billToClientName || '';
-    const companyName = addressData.companyName || addressData.billToCompanyName || '';
+    // Get name and company name from various possible fields
+    const clientName = addressData.name || 
+                      addressData.clientName || 
+                      addressData.billToClientName ||
+                      fullInvoiceData?.billToAddress?.clientName ||
+                      fullInvoiceData?.formData?.billToClientName || '';
+                      
+    const companyName = addressData.companyName || 
+                       addressData.billToCompanyName ||
+                       fullInvoiceData?.billToAddress?.companyName ||
+                       fullInvoiceData?.formData?.billToCompanyName || '';
     
     // Build address parts (without name/company)
     const addressParts = [];
     
     // Street
-    if (addressData.street || addressData.billToStreet) {
-      addressParts.push(addressData.street || addressData.billToStreet);
+    if (addressData.street || addressData.billToStreet || fullInvoiceData?.billToAddress?.street) {
+      addressParts.push(addressData.street || addressData.billToStreet || fullInvoiceData?.billToAddress?.street);
     }
     
     // Apartment
-    if (addressData.apartment || addressData.billToApartment) {
-      addressParts.push(addressData.apartment || addressData.billToApartment);
+    if (addressData.apartment || addressData.billToApartment || fullInvoiceData?.billToAddress?.apartment) {
+      addressParts.push(addressData.apartment || addressData.billToApartment || fullInvoiceData?.billToAddress?.apartment);
     }
     
     // City, State, ZipCode
     const cityParts = [];
-    if (addressData.city || addressData.billToCity) {
-      cityParts.push(addressData.city || addressData.billToCity);
+    if (addressData.city || addressData.billToCity || fullInvoiceData?.billToAddress?.city) {
+      cityParts.push(addressData.city || addressData.billToCity || fullInvoiceData?.billToAddress?.city);
     }
-    if (addressData.stateCode || addressData.billToStateCode || addressData.state || addressData.billToState) {
-      cityParts.push(addressData.stateCode || addressData.billToStateCode || addressData.state || addressData.billToState);
+    if (addressData.stateCode || addressData.billToStateCode || addressData.state || addressData.billToState || fullInvoiceData?.billToAddress?.state) {
+      cityParts.push(addressData.stateCode || addressData.billToStateCode || addressData.state || addressData.billToState || fullInvoiceData?.billToAddress?.state);
     }
-    if (addressData.zipCode || addressData.billToZipCode) {
-      cityParts.push(addressData.zipCode || addressData.billToZipCode);
+    if (addressData.zipCode || addressData.billToZipCode || fullInvoiceData?.billToAddress?.zipCode) {
+      cityParts.push(addressData.zipCode || addressData.billToZipCode || fullInvoiceData?.billToAddress?.zipCode);
     }
     if (cityParts.length > 0) {
       addressParts.push(cityParts.join(', '));
     }
     
     // Country
-    if (addressData.countryCode || addressData.billToCountryCode || addressData.country || addressData.billToCountry) {
-      addressParts.push(addressData.countryCode || addressData.billToCountryCode || addressData.country || addressData.billToCountry);
+    if (addressData.countryCode || addressData.billToCountryCode || addressData.country || addressData.billToCountry || fullInvoiceData?.billToAddress?.country) {
+      addressParts.push(addressData.countryCode || addressData.billToCountryCode || addressData.country || addressData.billToCountry || fullInvoiceData?.billToAddress?.country);
     }
     
     const addressString = addressParts.length > 0 ? addressParts.join(', ') : '';
@@ -295,8 +303,11 @@ const InvoiceHistory = () => {
                                      invoice.fullInvoiceData?.invoiceDetails?.referenceNo ||
                                      invoice.fullInvoiceData?.formData?.referenceNo || '-';
                   
-                  // Get vendor address data
-                  const vendorData = formatAddressData(invoice.toAddress, invoice.fullInvoiceData);
+                  // Get vendor address data - check both toAddress and billToAddress
+                  const vendorData = formatAddressData(
+                    invoice.toAddress || invoice.billToAddress, 
+                    invoice.fullInvoiceData
+                  );
                   const hasNameOrCompany = vendorData.name || vendorData.company;
                   const hasAddress = vendorData.address;
                   

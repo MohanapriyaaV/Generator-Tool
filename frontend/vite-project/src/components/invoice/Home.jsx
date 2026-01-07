@@ -101,12 +101,26 @@ const Home = () => {
           </div>
         </div>
         {/* Add Purchase Item Details Button */}
-        <div className="w-full mt-6 flex flex-col items-center">
+        <div className="w-full mt-6 flex flex-col items-center gap-3">
           <button
             className="w-full bg-violet-500 hover:bg-violet-700 transition text-white py-2 rounded-lg font-semibold shadow-lg text-lg"
             onClick={() => navigate('/items')}
           >
             Add Purchase Item Details
+          </button>
+          
+          {/* Create New Invoice Button */}
+          <button
+            onClick={() => {
+              console.log("✅ Create New Invoice clicked from home - navigating with clearForm flag...");
+              navigate('/invoice', { 
+                state: { clearForm: true, timestamp: Date.now() },
+                replace: false
+              });
+            }}
+            className="w-full bg-green-600 hover:bg-green-700 transition text-white py-2 rounded-lg font-semibold shadow-lg text-lg"
+          >
+            🆕 Create New Invoice
           </button>
         </div>
       </div>

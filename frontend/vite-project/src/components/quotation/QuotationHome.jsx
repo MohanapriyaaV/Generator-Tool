@@ -258,6 +258,22 @@ const QuotationHome = () => {
             onEyeClick={() => alert("View added quotation items by pressing the Add Quotation Item Details button at left")}
           />
         </div>
+        
+        {/* Create New Quotation Button */}
+        <div className="pt-4 border-t border-gray-200">
+          <button
+            onClick={() => {
+              console.log("✅ Create New Quotation clicked from home - navigating with clearForm flag...");
+              navigate('/quotation-form', { 
+                state: { clearForm: true, timestamp: Date.now() },
+                replace: false
+              });
+            }}
+            className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition duration-200 font-semibold"
+          >
+            🆕 Create New Quotation
+          </button>
+        </div>
       </div>
 
       {/* Modal for Quotation For */}

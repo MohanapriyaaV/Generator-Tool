@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 import { QuotationContext } from '../../context/QuotationContext';
 import { getAllQuotations, getNextQuotationNumber } from '../../services/api.js';
@@ -24,6 +24,69 @@ const QuotationForm = () => {
   } = useContext(QuotationContext);
 
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Effect to clear form when navigating from home without existing data
+  useEffect(() => {
+    // Auto-clear if no quotation number exists (fresh start)
+    if (!quotationDetails?.quotationNo && !quotationDetails?.projectName) {
+      console.log('🔄 [QuotationForm] Auto-clearing form for fresh start...');
+      
+      // Clear all form fields
+      setQuotationFor({
+        personName: "",
+        companyName: "",
+        street: "",
+        apartment: "",
+        zipCode: "",
+        countryCode: "",
+        stateCode: "",
+        city: "",
+      });
+      
+      setQuotationFrom({
+        companyName: "",
+        street: "",
+        apartment: "",
+        zipCode: "",
+        countryCode: "",
+        stateCode: "",
+        city: "",
+        pan: "",
+        gstin: "",
+        address: "",
+      });
+      
+      setBankDetails({
+        bankName: "",
+        accountNumber: "",
+        ifscCode: "",
+        branch: "",
+      });
+      
+      setQuotationItems([
+        { id: 1, name: "", hsn: "", qty: 0, rate: 0, cgst: 0, sgst: 0, igst: 0, amount: 0, total: 0 },
+      ]);
+      
+      setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
+      setTaxEnabled(true);
+      
+      // Clear address data
+      setAddressData({ states: [], cities: [] });
+      setFromAddressData({ states: [], cities: [] });
+      setSelectedFromLocation('');
+      
+      // Reset terms to default
+      setTerms([
+        "Our quotation is based on the SoW and technical details received from the client.",
+        "The quotation is stated in Indian Rupees (INR) unless otherwise indicated.",
+        "Pricing is inclusive of all GST taxes, fees and misc expenses.",
+        "Customer is responsible for functional aspects of the product.",
+        "Delivery period provided is from the date of receipt of the PO.",
+        "Assumptions and other details are attached in the technical proposal."
+      ]);
+    }
+  }, []);
   const [terms, setTerms] = useState([
     "Our quotation is based on the SoW and technical details received from the client.",
     "The quotation is stated in Indian Rupees (INR) unless otherwise indicated.",
@@ -41,6 +104,7 @@ const QuotationForm = () => {
   // Ref to track if we're initializing to prevent circular updates
   const isInitializing = useRef(true);
   const isUpdatingFromSequence = useRef(false);
+  const isClearingForm = useRef(false);
 
   // Get all countries - memoized to prevent recreation
   const allCountries = useMemo(() => Country.getAllCountries(), []);
@@ -350,11 +414,154 @@ const QuotationForm = () => {
     }
   };
 
+  // Effect to handle form clearing and quotation number generation after download
+  useEffect(() => {
+    // Check if we should clear the form (coming back from download)
+    console.log('🔍 [QuotationForm] useEffect triggered, location.state:', location.state);
+    console.log('🔍 [QuotationForm] location.state?.clearForm:', location.state?.clearForm);
+    
+    if (location.state?.clearForm === true) {
+      console.log('🔄 [QuotationForm] Clearing form after download...');
+      isClearingForm.current = true;
+      
+      // Clear all form fields
+      setQuotationFor({
+        personName: "",
+        companyName: "",
+        street: "",
+        apartment: "",
+        zipCode: "",
+        countryCode: "",
+        stateCode: "",
+        city: "",
+      });
+      
+      setQuotationFrom({
+        companyName: "",
+        street: "",
+        apartment: "",
+        zipCode: "",
+        countryCode: "",
+        stateCode: "",
+        city: "",
+        pan: "",
+        gstin: "",
+        address: "",
+      });
+      
+      setBankDetails({
+        bankName: "",
+        accountNumber: "",
+        ifscCode: "",
+        branch: "",
+      });
+      
+      setQuotationItems([
+        { id: 1, name: "", hsn: "", qty: 0, rate: 0, cgst: 0, sgst: 0, igst: 0, amount: 0, total: 0 },
+      ]);
+      
+      setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
+      setTaxEnabled(true);
+      
+      // Clear address data
+      setAddressData({ states: [], cities: [] });
+      setFromAddressData({ states: [], cities: [] });
+      setSelectedFromLocation('');
+      
+      // Clear terms
+      setTerms([
+        "Our quotation is based on the SoW and technical details received from the client.",
+        "The quotation is stated in Indian Rupees (INR) unless otherwise indicated.",
+        "Pricing is inclusive of all GST taxes, fees and misc expenses.",
+        "Customer is responsible for functional aspects of the product.",
+        "Delivery period provided is from the date of receipt of the PO.",
+        "Assumptions and other details are attached in the technical proposal."
+      ]);
+      
+      // Reset quotation details but keep issue date as today
+      const today = new Date();
+      setQuotationDetails({
+        quotationNo: "",
+        issueDate: today.toISOString().split('T')[0],
+        projectName: "",
+        deliveryDays: "",
+        validityDays: "",
+        paymentDays: "",
+        referenceNo: "",
+      });
+      
+      setSequenceDigits('1');
+      setGeneratedSequence(null);
+      setQuotationError('');
+      
+      // Generate new quotation number and reference number
+      const generateQuotationNumber = async () => {
+        try {
+          console.log('🔄 [QuotationForm] Generating new quotation number after download...');
+          const newQuotationNo = await getNextQuotationNumber();
+          console.log('✅ [QuotationForm] Generated new quotation number:', newQuotationNo);
+          
+          const seq = extractSequenceNumber(newQuotationNo);
+          if (seq !== null) {
+            setSequenceDigits(seq.toString());
+            setGeneratedSequence(seq);
+          }
+          
+          // Generate new reference number
+          console.log('🔄 [QuotationForm] Generating new reference number after download...');
+          const newRefNo = await generateUniqueReferenceNo();
+          console.log('✅ [QuotationForm] Generated new reference number:', newRefNo);
+          
+          setQuotationDetails(prev => ({ 
+            ...prev, 
+            quotationNo: newQuotationNo,
+            referenceNo: newRefNo
+          }));
+        } catch (error) {
+          console.error('❌ [QuotationForm] Error generating quotation number:', error);
+          // Fallback: generate with current financial year
+          const financialYear = getCurrentFinancialYear();
+          const fallbackNo = buildDocumentNumber('QT', financialYear, 1);
+          
+          setSequenceDigits('1');
+          setGeneratedSequence(1);
+          
+          // Generate fallback reference number
+          const timestamp = Date.now().toString().slice(-4);
+          const fallbackRefNo = `VSREF${timestamp}`;
+          
+          setQuotationDetails(prev => ({ 
+            ...prev, 
+            quotationNo: fallbackNo,
+            referenceNo: fallbackRefNo
+          }));
+        }
+      };
+      
+      generateQuotationNumber();
+      
+      // Reset the clearing flag after a delay to allow state updates and number generation to complete
+      setTimeout(() => {
+        isClearingForm.current = false;
+        console.log('✅ [QuotationForm] Form clearing completed, isClearingForm reset to false');
+      }, 2000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.clearForm, location.state?.timestamp]);
+
   useEffect(() => {
     const initializeQuotation = async () => {
+      console.log('🔄 [QuotationForm] initializeQuotation effect running, isClearingForm:', isClearingForm.current);
+      
       // Skip if we're updating from sequence digits change (to prevent loop)
       if (isUpdatingFromSequence.current) {
         isUpdatingFromSequence.current = false;
+        return;
+      }
+      
+      // Skip if we're currently clearing the form
+      if (isClearingForm.current) {
+        console.log('⏸️ [QuotationForm] Skipping initialization - form is being cleared');
         return;
       }
       
@@ -546,15 +753,116 @@ const QuotationForm = () => {
   };
 
   const clearAll = () => {
-    const confirmed = window.confirm('Clear all sections? This will reset form fields but keep generated IDs.');
+    const confirmed = window.confirm('Clear all sections? This will reset all form fields and generate new quotation and reference numbers.');
     if (!confirmed) return;
-    clearQuotationDetails();
-    clearQuotationFrom();
-    clearQuotationFor();
-    clearItems();
-    clearBankDetails();
-    clearTerms();
+    
+    // Clear all form fields
+    setQuotationFor({
+      personName: "",
+      companyName: "",
+      street: "",
+      apartment: "",
+      zipCode: "",
+      countryCode: "",
+      stateCode: "",
+      city: "",
+    });
+    
+    setQuotationFrom({
+      companyName: "",
+      street: "",
+      apartment: "",
+      zipCode: "",
+      countryCode: "",
+      stateCode: "",
+      city: "",
+      pan: "",
+      gstin: "",
+      address: "",
+    });
+    
+    setBankDetails({
+      bankName: "",
+      accountNumber: "",
+      ifscCode: "",
+      branch: "",
+    });
+    
+    setQuotationItems([
+      { id: 1, name: "", hsn: "", qty: 0, rate: 0, cgst: 0, sgst: 0, igst: 0, amount: 0, total: 0 },
+    ]);
+    
     setGlobalTaxes({ cgst: 0, sgst: 0, igst: 0 });
+    setTaxEnabled(true);
+    
+    // Clear address data
+    setAddressData({ states: [], cities: [] });
+    setFromAddressData({ states: [], cities: [] });
+    setSelectedFromLocation('');
+    
+    // Reset terms to default
+    setTerms([
+      "Our quotation is based on the SoW and technical details received from the client.",
+      "The quotation is stated in Indian Rupees (INR) unless otherwise indicated.",
+      "Pricing is inclusive of all GST taxes, fees and misc expenses.",
+      "Customer is responsible for functional aspects of the product.",
+      "Delivery period provided is from the date of receipt of the PO.",
+      "Assumptions and other details are attached in the technical proposal."
+    ]);
+    
+    // Clear quotation details but keep issue date as today
+    const today = new Date();
+    setQuotationDetails({
+      quotationNo: "",
+      issueDate: today.toISOString().split('T')[0],
+      projectName: "",
+      deliveryDays: "",
+      validityDays: "",
+      paymentDays: "",
+      referenceNo: "",
+    });
+    
+    setSequenceDigits('1');
+    setGeneratedSequence(null);
+    setQuotationError('');
+    
+    // Generate new quotation number and reference number
+    const generateNewNumbers = async () => {
+      try {
+        const newQuotationNo = await getNextQuotationNumber();
+        const seq = extractSequenceNumber(newQuotationNo);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString());
+          setGeneratedSequence(seq);
+        }
+        
+        const newRefNo = await generateUniqueReferenceNo();
+        
+        setQuotationDetails(prev => ({ 
+          ...prev, 
+          quotationNo: newQuotationNo,
+          referenceNo: newRefNo
+        }));
+      } catch (error) {
+        console.error('Error generating new numbers:', error);
+        // Fallback: generate with current financial year
+        const financialYear = getCurrentFinancialYear();
+        const fallbackNo = buildDocumentNumber('QT', financialYear, 1);
+        const timestamp = Date.now().toString().slice(-4);
+        const fallbackRefNo = `VSREF${timestamp}`;
+        
+        setSequenceDigits('1');
+        setGeneratedSequence(1);
+        
+        setQuotationDetails(prev => ({ 
+          ...prev, 
+          quotationNo: fallbackNo,
+          referenceNo: fallbackRefNo
+        }));
+      }
+    };
+    
+    generateNewNumbers();
   };
 
   // Check if Quotation From and Quotation For are in the same state

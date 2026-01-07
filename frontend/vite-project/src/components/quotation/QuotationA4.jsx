@@ -43,6 +43,19 @@ const QuotationA4 = () => {
         return; // Don't save multiple times
       }
       
+      // Don't save if we're coming from a download (clearForm navigation)
+      // The quotation should already be saved before reaching preview
+      if (window.location.search.includes('fromDownload') || window.history.state?.clearForm) {
+        console.log('Skipping save - coming from download');
+        return;
+      }
+      
+      // Don't save if quotation number is empty (form was just cleared)
+      if (!quotationDetails?.quotationNo || quotationDetails.quotationNo.trim() === '') {
+        console.log('Skipping save - quotation number is empty (form was cleared)');
+        return;
+      }
+      
       // Wait a bit for context to be fully loaded
       await new Promise(resolve => setTimeout(resolve, 500));
       
@@ -128,10 +141,23 @@ const QuotationA4 = () => {
       }
     };
 
-    // Save quotation when component mounts
-    saveQuotation();
+    // Save quotation when component mounts, but only if we have valid data
+    // Skip if quotation number is empty (form was cleared) or if already saved
+    // Also skip if we're coming from a download (clearForm navigation)
+    const shouldSkip = 
+      isSaved || 
+      !quotationDetails?.quotationNo || 
+      quotationDetails.quotationNo.trim() === '' ||
+      window.location.search.includes('fromDownload') || 
+      window.history.state?.clearForm;
+    
+    if (!shouldSkip && quotationFrom?.companyName) {
+      saveQuotation();
+    } else if (shouldSkip) {
+      console.log('Skipping save - conditions:', { isSaved, hasQuotationNo: !!quotationDetails?.quotationNo, clearForm: window.history.state?.clearForm });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run once on mount
+  }, []); // Run once on mount only
 
   const today = new Date();
   const dateString = today.toLocaleDateString("en-GB", {
@@ -233,9 +259,20 @@ const QuotationA4 = () => {
     try {
       const quotationNo = quotationDetails?.quotationNo || "Quotation";
       const fileName = `${quotationNo}_${new Date().toISOString().slice(0, 10)}.pdf`;
-      console.log("Starting PDF generation...");
+      console.log("✅ Starting PDF generation...");
       await generateQuotationPDF(printRef, fileName);
-      console.log("PDF generated successfully");
+      console.log("✅ PDF generated successfully");
+      
+      // Wait a moment for PDF download to start, then navigate back to form
+      // Pass clearForm flag to indicate form should be cleared and new quotation number generated
+      console.log("✅ PDF download completed. Navigating back to form with clearForm flag...");
+      setTimeout(() => {
+        navigate('/quotation-form', { 
+          state: { clearForm: true, timestamp: Date.now() },
+          replace: false
+        });
+        console.log("✅ Navigation completed with clearForm state:", { clearForm: true, timestamp: Date.now() });
+      }, 1000); // Increased delay to ensure PDF download starts
     } catch (error) {
       console.error("PDF generation failed:", error);
       const errorMessage = error?.message || "Unknown error occurred";
@@ -625,7 +662,13 @@ const QuotationA4 = () => {
           Edit Preview
         </button>
         <button
-          onClick={() => navigate('/quotation-form')}
+          onClick={() => {
+            console.log("✅ Create New Quotation clicked - navigating with clearForm flag...");
+            navigate('/quotation-form', { 
+              state: { clearForm: true, timestamp: Date.now() },
+              replace: false
+            });
+          }}
           className="w-full px-4 py-3 rounded-lg font-semibold text-white bg-gray-600 hover:bg-gray-700 transition-colors"
         >
           Create New Quotation

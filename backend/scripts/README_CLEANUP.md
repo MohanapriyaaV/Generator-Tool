@@ -1,13 +1,18 @@
-# Proforma Invoice Cleanup Script
+# Cleanup Scripts
 
 ## Overview
-This script safely deletes all proforma invoice data from:
-1. **MongoDB Database** - All proforma invoice records
+These scripts safely delete data from:
+1. **MongoDB Database** - All records from the specified collection
 2. **AWS S3 Storage** - All associated PDF files
 
+Available cleanup scripts:
+- `cleanupProformaInvoices.js` - Cleans proforma invoices
+- `cleanupQuotations.js` - Cleans quotations
+- `cleanupInvoices.js` - Cleans invoices
+
 ## ⚠️ WARNING
-**This is a DESTRUCTIVE operation that cannot be undone!** 
-Use this script only when you want to completely clean up test data.
+**These are DESTRUCTIVE operations that cannot be undone!** 
+Use these scripts only when you want to completely clean up test data.
 
 ## Prerequisites
 1. Ensure your `.env` file has the correct MongoDB and AWS credentials
@@ -19,13 +24,26 @@ Use this script only when you want to completely clean up test data.
 ### Option 1: Interactive Mode (Recommended)
 Run the script and it will ask for confirmation:
 
+**Proforma Invoices:**
 ```bash
 cd backend
 node scripts/cleanupProformaInvoices.js
 ```
 
-The script will:
-1. Show you a summary of all invoices to be deleted
+**Quotations:**
+```bash
+cd backend
+node scripts/cleanupQuotations.js
+```
+
+**Invoices:**
+```bash
+cd backend
+node scripts/cleanupInvoices.js
+```
+
+Each script will:
+1. Show you a summary of all records to be deleted
 2. Ask for confirmation (type "yes" to proceed)
 3. Delete PDFs from S3
 4. Delete records from MongoDB
@@ -34,32 +52,66 @@ The script will:
 ### Option 2: Non-Interactive Mode (with --confirm flag)
 If you're sure and want to skip the interactive prompt:
 
+**Proforma Invoices:**
 ```bash
 cd backend
 node scripts/cleanupProformaInvoices.js --confirm
 ```
 
-## What the Script Does
+**Quotations:**
+```bash
+cd backend
+node scripts/cleanupQuotations.js --confirm
+```
+
+**Invoices:**
+```bash
+cd backend
+node scripts/cleanupInvoices.js --confirm
+```
+
+## What the Scripts Do
+
+Each script follows the same pattern:
 
 1. **Connects to MongoDB** using `MONGODB_URI` from `.env`
-2. **Fetches all proforma invoices** from the database
+2. **Fetches all records** from the respective collection (ProformaInvoice, Quotation, or Invoice)
 3. **Shows a summary** of what will be deleted
 4. **Asks for confirmation** (unless `--confirm` flag is used)
 5. **Deletes PDFs from S3**:
    - Extracts S3 keys from `s3Url` fields in database
    - Deletes each PDF file from AWS S3
    - Reports success/failure for each file
-6. **Deletes all records** from MongoDB `ProformaInvoice` collection
+6. **Deletes all records** from MongoDB collection
 7. **Shows final summary** of what was deleted
 
 ## Example Output
 
+**Proforma Invoice Cleanup:**
 ```
 🔌 Connecting to MongoDB...
 ✅ Connected to MongoDB
 
 📋 Fetching all proforma invoices...
 📊 Found 5 proforma invoice(s) in database
+```
+
+**Quotation Cleanup:**
+```
+🔌 Connecting to MongoDB...
+✅ Connected to MongoDB
+
+📋 Fetching all quotations...
+📊 Found 10 quotation(s) in database
+```
+
+**Invoice Cleanup:**
+```
+🔌 Connecting to MongoDB...
+✅ Connected to MongoDB
+
+📋 Fetching all invoices...
+📊 Found 8 invoice(s) in database
 
 📝 Summary of invoices to be deleted:
   1. Invoice #PI25260035 (ID: 507f1f77bcf86cd799439011)
@@ -143,7 +195,11 @@ db.proformainvoices.deleteMany({})
 
 ## Notes
 
-- The script only deletes proforma invoices, not other document types (quotations, invoices, purchase orders)
+- Each script only deletes its specific document type:
+  - `cleanupProformaInvoices.js` - Only deletes proforma invoices
+  - `cleanupQuotations.js` - Only deletes quotations
+  - `cleanupInvoices.js` - Only deletes invoices
 - If S3 is not configured, the script will skip S3 deletion but still delete database records
-- The script preserves the counter for PI numbers (in the `counters` collection)
+- The scripts preserve counters for sequential numbering (in the `counters` collection)
+- Run each script separately if you need to clean multiple document types
 

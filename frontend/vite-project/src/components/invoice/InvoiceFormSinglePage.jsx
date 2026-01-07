@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Country, State, City } from 'country-state-city';
 import { InvoiceContext } from '../../context/InvoiceContext';
 import InvoiceA4 from './InvoiceA4';
@@ -373,6 +373,7 @@ const InvoiceFormSinglePage = () => {
   } = useContext(InvoiceContext);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const [showInvoice, setShowInvoice] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isPdfMode, setIsPdfMode] = useState(false);
@@ -489,22 +490,215 @@ const InvoiceFormSinglePage = () => {
 
   // Clear all fields handler
   const clearAllFields = () => {
-    const confirmed = window.confirm('Clear all fields? This will reset the form.');
+    const confirmed = window.confirm('Clear all fields? This will reset the form and generate a new invoice number.');
     if (!confirmed) return;
 
-    clearInvoiceFromFields();
-    clearBillToFields();
-    clearInvoiceDetailsFields();
-    clearItemsFields();
-    clearBankDetailsFields();
+    // Clear all form fields
+    setFormData({
+      // Invoice From fields
+      invoiceFromCompanyName: '',
+      invoiceFromStreet: '',
+      invoiceFromApartment: '',
+      invoiceFromZipCode: '',
+      invoiceFromCountryCode: '',
+      invoiceFromStateCode: '',
+      invoiceFromCity: '',
+      invoiceFromPAN: '',
+      invoiceFromGSTIN: '',
+      // Bill To fields
+      billToClientName: '',
+      billToCompanyName: '',
+      billToStreet: '',
+      billToApartment: '',
+      billToZipCode: '',
+      billToCountryCode: '',
+      billToStateCode: '',
+      billToCity: '',
+      billToPAN: '',
+      billToGSTIN: '',
+      billToPhoneNumber: '',
+      // Invoice Details fields
+      invoiceDate: '',
+      paymentTerms: '',
+      referenceNo: '',
+      otherReferences: '',
+      buyersOrderNo: '',
+      buyersOrderDate: '',
+      termsOfDelivery: '',
+      projectName: ''
+    });
+    
+    // Clear items
+    setItems([{ id: 1, name: '', hsn: '', quantity: 1, price: 0, cgst: 0, sgst: 0 }]);
+    
+    // Clear bank details
+    setBankDetails({ bankName: '', accountNo: '', branchIfsc: '', pan: '' });
+    
+    // Clear customer details
     setCustomerDetails({ name: '', address: '' });
+    
+    // Clear address data
+    setAddressData({
+      invoiceFrom: { states: [], cities: [] },
+      billTo: { states: [], cities: [] }
+    });
+    
+    // Clear selected location and errors
     setSelectedLocation('');
     setErrors({});
+    
+    // Clear proforma reference
+    setProformaReferenceNo('');
+    setProformaReferenceError('');
+    
+    // Generate new invoice number
+    const generateNewInvoiceNumber = async () => {
+      try {
+        const newNumber = await getNextInvoiceNumber();
+        const seq = extractSequenceNumber(newNumber);
+        if (seq !== null) {
+          setSequenceDigits(seq.toString());
+          setGeneratedSequence(seq);
+        }
+        setInvoiceNumber(newNumber);
+        setInvoiceNumberError('');
+      } catch (error) {
+        console.error('Error generating new invoice number:', error);
+        // Fallback: generate with current financial year
+        const financialYear = getCurrentFinancialYear();
+        const fallbackNumber = buildDocumentNumber('INV', financialYear, 1);
+        setSequenceDigits('1');
+        setGeneratedSequence(1);
+        setInvoiceNumber(fallbackNumber);
+        setInvoiceNumberError('');
+      }
+    };
+    
+    generateNewInvoiceNumber();
   };
+
+  // Ref to track if we're clearing the form to prevent initialization interference
+  const isClearingForm = useRef(false);
+
+  // Effect to handle form clearing and invoice number generation after download
+  useEffect(() => {
+    // Check if we should clear the form (coming back from download)
+    console.log('🔍 [InvoiceForm] useEffect triggered, location.state:', location.state);
+    console.log('🔍 [InvoiceForm] location.state?.clearForm:', location.state?.clearForm);
+    
+    if (location.state?.clearForm === true) {
+      console.log('🔄 [InvoiceForm] Clearing form after download...');
+      isClearingForm.current = true;
+      
+      // Clear all form fields
+      setFormData({
+        // Invoice From fields
+        invoiceFromCompanyName: '',
+        invoiceFromStreet: '',
+        invoiceFromApartment: '',
+        invoiceFromZipCode: '',
+        invoiceFromCountryCode: '',
+        invoiceFromStateCode: '',
+        invoiceFromCity: '',
+        invoiceFromPAN: '',
+        invoiceFromGSTIN: '',
+        // Bill To fields
+        billToClientName: '',
+        billToCompanyName: '',
+        billToStreet: '',
+        billToApartment: '',
+        billToZipCode: '',
+        billToCountryCode: '',
+        billToStateCode: '',
+        billToCity: '',
+        billToPAN: '',
+        billToGSTIN: '',
+        billToPhoneNumber: '',
+        // Invoice Details fields
+        invoiceDate: '',
+        paymentTerms: '',
+        referenceNo: '',
+        otherReferences: '',
+        buyersOrderNo: '',
+        buyersOrderDate: '',
+        termsOfDelivery: '',
+        projectName: ''
+      });
+      
+      // Clear items
+      setItems([{ id: 1, name: '', hsn: '', quantity: 1, price: 0, cgst: 0, sgst: 0 }]);
+      
+      // Clear bank details
+      setBankDetails({ bankName: '', accountNo: '', branchIfsc: '', pan: '' });
+      
+      // Clear customer details
+      setCustomerDetails({ name: '', address: '' });
+      
+      // Clear address data
+      setAddressData({
+        invoiceFrom: { states: [], cities: [] },
+        billTo: { states: [], cities: [] }
+      });
+      
+      // Clear selected location and errors
+      setSelectedLocation('');
+      setErrors({});
+      
+      // Clear proforma reference
+      setProformaReferenceNo('');
+      setProformaReferenceError('');
+      
+      // Reset invoice number state
+      setInvoiceNumber('');
+      setSequenceDigits('1');
+      setGeneratedSequence(null);
+      setInvoiceNumberError('');
+      
+      // Generate new invoice number
+      const generateInvoiceNumber = async () => {
+        try {
+          console.log('🔄 [InvoiceForm] Generating new invoice number after download...');
+          const newNumber = await getNextInvoiceNumber();
+          console.log('✅ [InvoiceForm] Generated new invoice number:', newNumber);
+          
+          const seq = extractSequenceNumber(newNumber);
+          if (seq !== null) {
+            setSequenceDigits(seq.toString());
+            setGeneratedSequence(seq);
+          }
+          
+          setInvoiceNumber(newNumber);
+        } catch (error) {
+          console.error('❌ [InvoiceForm] Error generating invoice number:', error);
+          // Fallback: generate with current financial year
+          const financialYear = getCurrentFinancialYear();
+          const fallbackNumber = buildDocumentNumber('INV', financialYear, 1);
+          
+          setSequenceDigits('1');
+          setGeneratedSequence(1);
+          setInvoiceNumber(fallbackNumber);
+        }
+      };
+      
+      generateInvoiceNumber();
+      
+      // Reset the clearing flag after a delay to allow state updates and number generation to complete
+      setTimeout(() => {
+        isClearingForm.current = false;
+        console.log('✅ [InvoiceForm] Form clearing completed, isClearingForm reset to false');
+      }, 2000);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state?.clearForm, location.state?.timestamp]);
 
   // Generate unique invoice number in INV25260001 format
   useEffect(() => {
     const generateInvoiceNumber = async () => {
+      // Skip if we're currently clearing the form
+      if (isClearingForm.current) {
+        return;
+      }
+      
       // Check if invoice number already exists in context or state
       const existingNumber = invoiceNumber;
       

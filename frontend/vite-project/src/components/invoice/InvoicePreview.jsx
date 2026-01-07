@@ -436,6 +436,17 @@ const InvoicePreview = () => {
           console.error('❌ Error uploading Invoice PDF to S3:', uploadError);
         }
       }
+      
+      // Wait a moment for PDF download to start, then navigate back to form
+      // Pass clearForm flag to indicate form should be cleared and new invoice number generated
+      console.log("✅ PDF download completed. Navigating back to form with clearForm flag...");
+      setTimeout(() => {
+        navigate('/invoice', { 
+          state: { clearForm: true, timestamp: Date.now() },
+          replace: false
+        });
+        console.log("✅ Navigation completed with clearForm state:", { clearForm: true, timestamp: Date.now() });
+      }, 1000); // Increased delay to ensure PDF download starts
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Failed to generate PDF. Please try again.');
@@ -453,7 +464,11 @@ const InvoicePreview = () => {
   };
 
   const handleCreateNew = () => {
-    navigate('/invoice');
+    console.log("✅ Create New Invoice clicked - navigating with clearForm flag...");
+    navigate('/invoice', { 
+      state: { clearForm: true, timestamp: Date.now() },
+      replace: false
+    });
   };
 
   return (
