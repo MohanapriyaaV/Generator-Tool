@@ -206,8 +206,28 @@ const PurchaseOrderPreview = () => {
             width: '794px',
             minHeight: '1123px',
             padding: '40px',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
+            position: 'relative',
+            backgroundColor: '#fff',
+            background: '#fff'
           }}>
+            {/* Watermark overlay */}
+            <div style={{
+              position: 'absolute',
+              top: '25%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '150px',
+              height: '150px',
+              backgroundImage: 'url(/WaterMark.png)',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center center',
+              backgroundSize: 'contain',
+              opacity: 0.6,
+              pointerEvents: 'none',
+              zIndex: 0
+            }}></div>
+            <div style={{ position: 'relative', zIndex: 1 }}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b pb-2 mb-3" style={{ position: 'relative', alignItems: 'flex-start' }}>
               <div>
                 <img src={logo} alt="Vista Logo" style={{ width: 280, marginBottom: 12 }} />
@@ -373,6 +393,7 @@ const PurchaseOrderPreview = () => {
             <div style={{ textAlign: 'center', flex: 1, color: '#22c55e' }}>www.vistaes.com</div>
             <div style={{ textAlign: 'right', flex: 1 }}>CIN: U72200TZ2011PTC017012</div>
           </div>
+            </div>
         </div>
         </div>
 

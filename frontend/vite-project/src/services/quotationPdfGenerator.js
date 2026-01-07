@@ -748,7 +748,7 @@ export const generateQuotationPDF = async (
       const quotationNo = fileName.split('_')[0].replace('.pdf', ''); 
       console.log('Extracted quotation number for database update:', quotationNo);
       await updateQuotationS3Url(quotationNo, uploadResult.url);
-      console.log('✅ Database updated with S3 URL');
+      console.log('✅ Database updated with S3 URL for quotation:', quotationNo);
     } catch (uploadError) {
       console.warn('⚠️ Could not upload PDF to S3 or update database:', uploadError.message);
       // Don't throw error - PDF was still downloaded successfully
