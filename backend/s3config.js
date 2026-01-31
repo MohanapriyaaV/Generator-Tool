@@ -1,18 +1,22 @@
 import AWS from "aws-sdk";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-// const result = dotenv.config({ path: path.join(__dirname, '.env') });
-const result = dotenv.config();
-
-if (result.error) {
-    console.error('❌ Error loading .env file:', result.error);
-    process.exit(1);
+// Load .env only if it exists (e.g. local dev). In Docker, env vars are set by docker-compose.
+const envPath = path.join(__dirname, ".env");
+if (fs.existsSync(envPath)) {
+    const result = dotenv.config({ path: envPath });
+    if (result.error && result.error.code !== "ENOENT") {
+        console.error("❌ Error loading .env file:", result.error);
+        process.exit(1);
+    }
+} else {
+    dotenv.config(); // load from process.cwd() if present (no path)
 }
 
 // Debug: Log environment variables (remove in production)
